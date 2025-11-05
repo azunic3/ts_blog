@@ -1,0 +1,52 @@
+.navbar-brand {
+  font-size: 2rem;
+  font-weight: 500;
+}
+
+.nav-link {
+  font-size: 1.3rem;
+  font-weight: 400;
+  color: black;
+}
+
+.container {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+
+.app-header {
+  background-color: rgb(240, 240, 240);
+  padding: 0.6rem;
+}
+
+.dropdown-toggle {
+  background-color: transparent;
+  border: none;
+  color: black;
+  font-size: 1.3rem;
+  font-weight: 400;
+}
+
+.dropdown-toggle:focus {
+  background-color: transparent;
+  color: black;
+}
+
+.dropdown-item {
+  height: fit-content;
+  font-size: 1rem;
+  color: black;
+}
+
+.dropdown-item:hover {
+  background-color: rgb(240, 240, 240);
+}
+
+.dropdown-item:focus {
+  color: black;
+}
+
+.dropdown-item:active {
+  background-color: rgb(240, 240, 240);
+}

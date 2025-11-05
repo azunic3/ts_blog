@@ -1,0 +1,35 @@
+<div class="container pt-5 d-flex flex-wrap gap-5">
+  <div *ngFor="let blog of blogPosts" class="card" style="width: 25rem">
+    <img src="{{ blog.featureImageUrl }}" class="card-img-top" alt="..." />
+    <div class="card-body">
+      <h5 class="card-title">{{ blog.title }}</h5>
+      <p class="card-text">
+        {{ blog.shortDescription }}
+      </p>
+      <a [routerLink]="['/blog', blog.urlHandle]" class="btn btn-primary"
+        >Read More</a
+      >
+    </div>
+  </div>
+
+  <div class="d-flex container justify-content-between align-items-center mb-4">
+    <button
+      (click)="previousPage()"
+      type="button"
+      class="nav-link"
+      *ngIf="page !== 1"
+    >
+      Previous
+    </button>
+    <div *ngIf="page === 1">{{ " " }}</div>
+
+    <button
+      (click)="nextPage()"
+      type="button"
+      class="nav-link"
+      *ngIf="pages !== -1"
+    >
+      Next
+    </button>
+  </div>
+</div>

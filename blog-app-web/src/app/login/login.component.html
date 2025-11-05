@@ -1,0 +1,45 @@
+<div class="pt-5 d-flex justify-content-center">
+  <div class="container shadow-lg mt-5 p-5 m-0 form-left"></div>
+  <form class="container bg-light shadow-lg mt-5 m-0 p-5 form-right">
+    <div data-mdb-input-init class="form-outline mb-4 mt-5">
+      <label class="form-label" for="form2Example1">Username</label>
+      <input
+        type="text"
+        id="username"
+        name="username"
+        class="form-control"
+        [(ngModel)]="username"
+        placeholder="Enter your username"
+      />
+    </div>
+    <div data-mdb-input-init class="form-outline mb-4">
+      <label class="form-label" for="form2Example2">Password</label>
+      <input
+        type="password"
+        id="password"
+        name="password"
+        class="form-control"
+        [(ngModel)]="password"
+        placeholder="Enter your password"
+      />
+    </div>
+    <div class="d-flex align-items center justify-content-center">
+      <button
+        type="button"
+        data-mdb-button-init
+        data-mdb-ripple-init
+        class="btn btn-primary mb-4"
+        (click)="login()"
+      >
+        Login
+      </button>
+    </div>
+
+    <div class="text-center">
+      <p>
+        Not a member?
+        <a class="link" [routerLink]="['/register']">Register!</a>
+      </p>
+    </div>
+  </form>
+</div>

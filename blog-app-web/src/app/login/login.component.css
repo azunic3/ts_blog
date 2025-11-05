@@ -1,0 +1,28 @@
+.form-left,
+.form-right {
+  width: 400px;
+  height: 478px;
+}
+
+.link {
+  text-decoration: none;
+}
+
+.form-left {
+  object-fit: cover;
+  background: url("../../assets/images/form-side-picture.svg");
+  background-size: cover;
+}
+
+@media screen and (max-width: 825px) {
+  .form-left {
+    display: none;
+  }
+
+  .form-right {
+    width: 350px;
+    object-fit: cover;
+    background: url("../../assets/images/form-picture-mobile.svg");
+    background-size: cover;
+  }
+}

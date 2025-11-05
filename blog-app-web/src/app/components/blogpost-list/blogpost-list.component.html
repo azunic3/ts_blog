@@ -1,0 +1,84 @@
+<div class="container pt-1">
+  <div>
+    <h1>BlogPost List</h1>
+  </div>
+  <div class="d-flex justify-content-end">
+    <button
+      type="button"
+      class="btn btn-primary"
+      (click)="navigateToAddBlogPost()"
+    >
+      Add BlogPost
+    </button>
+  </div>
+  <div class="container mt-3">
+    <table class="table table-bordered">
+      <thead>
+        <tr>
+          <th scope="col">Title</th>
+          <th scope="col">Short Description</th>
+          <th scope="col">Is Visible</th>
+          <th scope="col">Categories</th>
+          <th scope="col">{{ " " }}</th>
+          <th scope="col">{{ " " }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let blogPost of blogPosts">
+          <th *ngIf="blogPost.isVisible" scope="row">{{ blogPost.title }}</th>
+          <td *ngIf="blogPost.isVisible">{{ blogPost.shortDescription }}</td>
+          <td *ngIf="blogPost.isVisible">{{ blogPost.isVisible }}</td>
+          <td *ngIf="blogPost.isVisible" class="w-25">
+            <ng-container
+              *ngFor="let category of blogPost.categories"
+              class="d-flex flex-wrap gap-1"
+            >
+              <div class="badge rounded-pill bg-light text-dark">
+                {{ category.name }}
+              </div>
+              {{ " " }}
+            </ng-container>
+          </td>
+          <td *ngIf="blogPost.isVisible">
+            <a
+              [routerLink]="['/admin/blogposts/edit', blogPost.id]"
+              class="btn btn-light"
+              >Edit</a
+            >
+          </td>
+          <td *ngIf="blogPost.isVisible">
+            <button
+              type="button"
+              (click)="deleteBlogPost(blogPost.id)"
+              class="btn btn-danger"
+            >
+              Delete
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <div
+      class="d-flex container justify-content-between align-items-center mb-3"
+    >
+      <button
+        (click)="previousPage()"
+        type="button"
+        class="nav-link"
+        *ngIf="page !== 1"
+      >
+        Previous
+      </button>
+      <div *ngIf="page === 1">{{ " " }}</div>
+
+      <button
+        (click)="nextPage()"
+        type="button"
+        class="nav-link"
+        *ngIf="pages !== -1"
+      >
+        Next
+      </button>
+    </div>
+  </div>
+</div>

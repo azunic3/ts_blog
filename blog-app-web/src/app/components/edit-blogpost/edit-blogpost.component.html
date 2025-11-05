@@ -1,0 +1,251 @@
+<div class="container">
+  <h1 class="st-3">Edit Blog Post</h1>
+
+  <ng-container *ngIf="blogPost; else notFound">
+    <form #form="ngForm" (ngSubmit)="onFormSubmit()">
+      <div class="mt-3">
+        <label class="form-label" for="blogPostId">Blog Post Id</label>
+        <input
+          type="text"
+          id="blogPostId"
+          class="form-control"
+          name="blogPostId"
+          [(ngModel)]="blogPost.id"
+          disabled
+        />
+      </div>
+
+      <div class="mt-3">
+        <label class="form-label" for="blogPostTitle">Title</label>
+        <input
+          type="text"
+          id="blogPostTitle"
+          class="form-control"
+          name="blogPostTitle"
+          [(ngModel)]="blogPost.title"
+        />
+      </div>
+
+      <div class="mt-3">
+        <label class="form-label" for="shortDescription"
+          >Short Description</label
+        >
+        <input
+          type="text"
+          id="shortDescription"
+          class="form-control"
+          name="shortDescription"
+          [(ngModel)]="blogPost.shortDescription"
+        />
+      </div>
+
+      <div class="row">
+        <div class="col-md-6">
+          <div class="form-group mt-3">
+            <label class="pb-2" for="content">Content</label>
+            <textarea
+              type="text"
+              class="form-control"
+              id="content"
+              name="content"
+              rows="15"
+              required
+              [(ngModel)]="blogPost.content"
+              (ngModelChange)="updateMarkdown($event)"
+            ></textarea>
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <div class="form-group mt-3">
+            <label class="pb-2" for="preview">Preview</label>
+            <div
+              id="preview"
+              class="form-control"
+              style="height: 373px; overflow-y: auto; background-color: #f9f9f9"
+            >
+              <markdown [data]="markdownContent"></markdown>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label for="featuredImageUrl" class="form-label"
+          >Featured Image URL</label
+        >
+        <button
+          type="button"
+          class="btn btn-primary m-3"
+          data-bs-toggle="modal"
+          data-bs-target="#imageModal"
+        >
+          Upload Image
+        </button>
+        <input
+          type="text"
+          class="form-control"
+          id="featuredImageUrl"
+          [(ngModel)]="blogPost.featureImageUrl"
+          name="featuredImageUrl"
+        />
+      </div>
+      <div *ngIf="blogPost.featureImageUrl" class="mb-3">
+        <div class="images-preview">
+          <img
+            [src]="blogPost.featureImageUrl"
+            alt="Featured Image Preview"
+            class="img-fluid image-preview"
+          />
+        </div>
+      </div>
+
+      <div class="mt-3">
+        <label class="form-label" for="urlHandle">URL Handle</label>
+        <input
+          type="text"
+          id="urlHandle"
+          class="form-control"
+          name="urlHandle"
+          [(ngModel)]="blogPost.urlHandle"
+        />
+      </div>
+
+      <div class="mt-3">
+        <label class="form-label" for="publishedDate">Published Date</label>
+        <input
+          type="date"
+          id="publishedDate"
+          class="form-control"
+          name="publishedDate"
+          [(ngModel)]="blogPost.publishDate"
+        />
+      </div>
+
+      <div class="mt-3">
+        <label class="form-label" for="author">Author</label>
+        <input
+          type="text"
+          id="author"
+          class="form-control"
+          name="author"
+          [(ngModel)]="blogPost.author"
+        />
+      </div>
+
+      <div class="mt-3">
+        <label class="form-label" for="isVisible">Is Visible</label>
+        <input
+          type="checkbox"
+          id="isVisible"
+          name="isVisible"
+          [(ngModel)]="blogPost.isVisible"
+        />
+      </div>
+      <div class="mt-3">
+        <label class="form-label" for="categories">Categories</label>
+        <select
+          class="form-select"
+          multiple
+          aria-label="multiple select example"
+          [(ngModel)]="selectedCategories"
+          name="categories"
+        >
+          <option *ngFor="let category of categories" [value]="category.id">
+            {{ category.name }}
+          </option>
+        </select>
+      </div>
+
+      <div class="mb-3 mt-3">
+        <button type="submit" class="btn btn-primary">Save</button>
+      </div>
+    </form>
+  </ng-container>
+
+  <ng-template #notFound>
+    <p>Blog post not found.</p>
+  </ng-template>
+</div>
+
+<div
+  #imageModal
+  class="modal fade"
+  id="imageModal"
+  tabindex="-2"
+  role="dialog"
+  aria-labelledby="imageModalLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="imageModalLabel">Images</h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
+      </div>
+      <div class="modal-body">
+        <div class="row image-grid">
+          <div
+            class="col-md-3 col-sm-6 mb-3"
+            *ngFor="let image of blogImages$ | async"
+          >
+            <div class="card">
+              <img
+                (click)="onImageClick(image.url)"
+                [src]="image.url"
+                [alt]="image.title"
+                class="card-img-top hover-image"
+              />
+              <div class="card-body">
+                <p class="card-text">{{ image.title }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="upload-section">
+          <h5>Upload Image</h5>
+          <form (ngSubmit)="SubmitImageForm()">
+            <div class="mb-3">
+              <label for="fileInput" class="form-label">Choose File</label>
+              <input
+                type="file"
+                (change)="onFileSelected($event)"
+                class="form-control"
+                id="fileInput"
+              />
+            </div>
+            <div class="mb-3">
+              <label for="fileName" class="form-label">File Name</label>
+              <input
+                type="text"
+                class="form-control"
+                [(ngModel)]="fileName"
+                id="fileName"
+                name="fileName"
+                placeholder="File Name"
+              />
+            </div>
+            <div class="mb-3">
+              <label for="imageTitle" class="form-label">Title</label>
+              <input
+                type="text"
+                class="form-control"
+                [(ngModel)]="title"
+                id="imageTitle"
+                name="imageTitle"
+                placeholder="Title"
+              />
+            </div>
+            <button type="submit" class="btn btn-dark w-100">Upload</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
