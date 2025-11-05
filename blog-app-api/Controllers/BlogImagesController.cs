@@ -46,7 +46,7 @@ namespace Blog.Controllers
         }
 
         [HttpPost("Upload")]
-        //[Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin")]
         [SwaggerOperation("Upload Image")]
         public async Task<IActionResult> UploadImage(IFormFile file, [FromForm] string fileName, [FromForm] string title)
         {

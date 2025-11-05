@@ -42,7 +42,7 @@ namespace BlogAppAPI.Controllers
 
         [HttpGet]
         [SwaggerOperation("Get Blog Posts by Page")]
-        //[Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Get(int page = 1)
         {
             var blogPosts = await _blogPostRepository.Get(page);
@@ -63,7 +63,7 @@ namespace BlogAppAPI.Controllers
         }
 
         [HttpGet("{id:guid}")]
-        //[Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin")]
         [SwaggerOperation("Get Blog Post by Id")]
         public async Task<IActionResult> GetById(Guid id)
         {
@@ -91,7 +91,7 @@ namespace BlogAppAPI.Controllers
 
         [HttpPost]
         [SwaggerOperation("Create Blog Post")]
-        //[Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Create(BlogPostCreateDto blogPost)
         {
             if (blogPost == null)
@@ -112,7 +112,7 @@ namespace BlogAppAPI.Controllers
 
         [HttpPut("{id}")]
         [SwaggerOperation("Update Blog Post by Id")]
-        //[Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Update(Guid id, BlogPostCreateDto blogPost)
         {
             await _blogPostRepository.Update(id, blogPost);
@@ -121,7 +121,7 @@ namespace BlogAppAPI.Controllers
 
         [HttpDelete("{id}")]
         [SwaggerOperation("Delete Blog Post by Id")]
-        //[Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Delete(Guid id)
         {
             var existingBlogPost = await _blogPostRepository.Get(id);
