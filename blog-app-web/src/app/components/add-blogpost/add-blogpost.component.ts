@@ -1,4 +1,3 @@
-import { ChangeDetectorRef, Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { BlogPostCreate } from 'src/app/models/blogposts.model';
 import { BlogpostsService } from 'src/app/services/blogposts/blogposts.service';
 import { Observable, Subject, Subscription, takeUntil } from 'rxjs';
@@ -8,6 +7,7 @@ import { Category } from 'src/app/models/categories.model';
 import { AuthService } from 'src/app/services/auth/auth.service';
 import { BlogImagePost } from 'src/app/models/blog-image-post.model';
 import { BlogImagesService } from 'src/app/services/blog-images/blog-images.service';
+import { ChangeDetectorRef, Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 
 @Component({
   selector: 'app-add-blogpost',
@@ -54,6 +54,7 @@ export class AddBlogpostComponent implements OnInit {
     }
 
     this.getCategories();
+    this.blogImages$ = this.blogImageService.getBlogImages();
   }
 
   getCategories(): void {

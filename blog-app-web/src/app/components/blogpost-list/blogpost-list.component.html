@@ -25,10 +25,10 @@
       </thead>
       <tbody>
         <tr *ngFor="let blogPost of blogPosts">
-          <th *ngIf="blogPost.isVisible" scope="row">{{ blogPost.title }}</th>
-          <td *ngIf="blogPost.isVisible">{{ blogPost.shortDescription }}</td>
-          <td *ngIf="blogPost.isVisible">{{ blogPost.isVisible }}</td>
-          <td *ngIf="blogPost.isVisible" class="w-25">
+          <th scope="row">{{ blogPost.title }}</th>
+          <td>{{ blogPost.shortDescription }}</td>
+          <td>{{ blogPost.isVisible }}</td>
+          <td class="w-25">
             <ng-container
               *ngFor="let category of blogPost.categories"
               class="d-flex flex-wrap gap-1"
@@ -39,14 +39,14 @@
               {{ " " }}
             </ng-container>
           </td>
-          <td *ngIf="blogPost.isVisible">
+          <td>
             <a
               [routerLink]="['/admin/blogposts/edit', blogPost.id]"
               class="btn btn-light"
               >Edit</a
             >
           </td>
-          <td *ngIf="blogPost.isVisible">
+          <td>
             <button
               type="button"
               (click)="deleteBlogPost(blogPost.id)"

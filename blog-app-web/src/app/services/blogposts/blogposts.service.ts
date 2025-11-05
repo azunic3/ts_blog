@@ -19,6 +19,12 @@ export class BlogpostsService {
     );
   }
 
+  getVisibleBlogPosts(page: number = 1): Observable<BlogPostListResponse> {
+    return this.http.get<BlogPostListResponse>(
+      `${this.apiUrl}/BlogPost/Visible?page=${page}`
+    );
+  }
+
   getBlogPost(id: string): Observable<BlogPost> {
     return this.http.get<BlogPost>(`${this.apiUrl}/BlogPost/${id}`);
   }

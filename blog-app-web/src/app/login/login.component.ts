@@ -20,8 +20,7 @@ export class LoginComponent {
         this.router.navigate(['/home']);
       },
       (error: any) => {
-        this.errorMessage = 'Error loging in'; // Postavi errorMessage
-        //console.error('Greška prilikom prijavljivanja:', error);
+        this.errorMessage = error.error;
       }
     );
   }

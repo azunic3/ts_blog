@@ -12,18 +12,22 @@ export class RegisterComponent {
   username: string = '';
   password: string = '';
   email: string = '';
+  errorMessage: string = '';
 
   constructor(private authService: AuthService, private router: Router) {}
 
   register(): void {
     this.authService
       .register(this.username, this.email, this.password)
-      .subscribe(() => {
+      .subscribe((response) => {
         this.username = '';
         this.email = '';
         this.password = '';
         alert('Registration successful!');
         this.router.navigate(['/login']);
-      });
+      },
+    (error) => {
+      this.errorMessage = "Error registering user.";
+    });
   }
 }

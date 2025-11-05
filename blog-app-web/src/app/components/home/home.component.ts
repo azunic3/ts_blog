@@ -1,10 +1,10 @@
-import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { BlogPost } from 'src/app/models/blogposts.model';
 import { BlogpostsService } from 'src/app/services/blogposts/blogposts.service';
 import { jwtDecode } from 'jwt-decode';
 import { DecodedToken } from 'src/app/models/token.model';
+import { Component, OnInit } from '@angular/core';
 
 @Component({
   selector: 'app-home',
@@ -27,7 +27,7 @@ export class HomeComponent implements OnInit {
 
   getBlogPosts(page: number = 1): void {
     this.blogPostService
-      .getBlogPosts(page)
+      .getVisibleBlogPosts(page)
       .subscribe((response: any) => {
         this.blogPosts = response.blogPosts;
         this.pages = response.page;
