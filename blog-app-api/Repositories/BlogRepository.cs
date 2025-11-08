@@ -125,8 +125,18 @@ namespace BlogAppAPI.Repositories
                         Id = c.Id,
                         Name = c.Name,
                         UrlHandle = c.UrlHandle,
+                    }).ToList(),
+
+                    // 👇 Dodaj ovo:
+                    Comments = x.Comments.Select(c => new CommentGetDto
+                    {
+                        Id = c.Id,
+                        Content = c.content,
+                        CreatedAt = c.CreatedAt,
+                        UserName = c.User.UserName
                     }).ToList()
-                }).FirstOrDefaultAsync();
+                })
+                .FirstOrDefaultAsync();
 
             return blogPost;
         }

@@ -49,7 +49,7 @@ export class AddBlogpostComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    if (!this.authService.isLoggedIn() || !this.authService.isAdmin()) {
+    if (!this.authService.isLoggedIn()) {
       this.router.navigate(['/']);
     }
 

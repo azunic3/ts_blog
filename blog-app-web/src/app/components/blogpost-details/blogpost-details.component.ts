@@ -8,11 +8,16 @@ import { BlogpostsService } from 'src/app/services/blogposts/blogposts.service';
   selector: 'app-blogpost-details',
   templateUrl: './blogpost-details.component.html',
   styleUrls: ['./blogpost-details.component.css'],
-  providers: [BlogpostsService,]
+  providers: [BlogpostsService],
 })
 export class BlogpostDetailsComponent implements OnInit {
-  constructor(private blogPostService: BlogpostsService
-    , private route: ActivatedRoute, private router: Router) {}
+  constructor(
+    private blogPostService: BlogpostsService,
+    private route: ActivatedRoute,
+    private router: Router,
+    private authService: AuthService
+  ) {}
+
   blogPost: BlogPost = {
     id: '',
     title: '',
@@ -23,22 +28,43 @@ export class BlogpostDetailsComponent implements OnInit {
     isVisible: true,
     urlHandle: '',
     publishDate: new Date(),
-    categories: []
+    categories: [],
   };
 
+  // 🗨️ Comments section
+  comments: { author: string; text: string; date: Date }[] = [];
+  newComment = { author: '', text: '' };
+
   ngOnInit(): void {
-    this.route.paramMap.subscribe(params => {
+    this.route.paramMap.subscribe((params) => {
       const urlHandle = params.get('urlHandle');
       if (urlHandle) {
         this.getBlogPost(urlHandle);
-        
       }
-    })
+    });
+
+    // Optionally auto-fill author if user is logged in
+    //const currentUser = this.authService.getUser();
+    //if (currentUser && currentUser.name) {
+      //this.newComment.author = currentUser.name;
+   // }
   }
 
   getBlogPost(urlHandle: string) {
     this.blogPostService.getBlogPostByUrlHandle(urlHandle).subscribe((response: any) => {
       this.blogPost = response;
-    })
+    });
+  }
+
+  // ➕ Add comment
+  addComment() {
+    if (this.newComment.author.trim() && this.newComment.text.trim()) {
+      this.comments.push({
+        author: this.newComment.author,
+        text: this.newComment.text,
+        date: new Date(),
+      });
+      this.newComment.text = '';
+    }
   }
 }

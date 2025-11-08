@@ -1,4 +1,5 @@
 using BlogAppAPI.Data;
+using BlogAppAPI.Models.Domain;
 using BlogAppAPI.Repositories;
 using BlogAppAPI.Repositories.Interface;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -14,10 +15,38 @@ var builder = WebApplication.CreateBuilder(args);
 // --------------------------------------------------
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+
+
 builder.Services.AddSwaggerGen(c =>
 {
-    c.EnableAnnotations(); // Omogu?i Swagger anotacije
+    c.EnableAnnotations();
+
+    c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+        Scheme = "Bearer",
+        BearerFormat = "JWT",
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Description = "Unesi JWT token u format: Bearer {token}"
+    });
+
+    c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+    {
+        {
+            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+            {
+                Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                {
+                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            new string[] {}
+        }
+    });
 });
+
 
 // --------------------------------------------------
 // 2?? Database konekcija
@@ -30,10 +59,9 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 // --------------------------------------------------
 // 3?? Identity i korisnici
 // --------------------------------------------------
-builder.Services.AddIdentity<IdentityUser, IdentityRole>()
+builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
-
 // --------------------------------------------------
 // 4?? Repozitoriji
 // --------------------------------------------------
@@ -91,7 +119,7 @@ using (var scope = app.Services.CreateScope())
     var services = scope.ServiceProvider;
 
     var context = services.GetRequiredService<ApplicationDbContext>();
-    var userManager = services.GetRequiredService<UserManager<IdentityUser>>();
+    var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
     var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
 
     context.Database.Migrate();
@@ -105,17 +133,27 @@ using (var scope = app.Services.CreateScope())
         }
     }
 
-    var adminUser = new IdentityUser
+    var adminUser = new ApplicationUser
     {
         UserName = "admin",
         Email = "admin@example.com",
         EmailConfirmed = true
     };
 
-    if (await userManager.FindByNameAsync(adminUser.UserName) == null)
+    var existingAdmin = await userManager.FindByNameAsync(adminUser.UserName);
+
+    if (existingAdmin == null)
     {
         await userManager.CreateAsync(adminUser, "Admin@123");
         await userManager.AddToRoleAsync(adminUser, "Admin");
+    }
+    else
+    {
+        // ensure the user has Admin role if already exists
+        if (!await userManager.IsInRoleAsync(existingAdmin, "Admin"))
+        {
+            await userManager.AddToRoleAsync(existingAdmin, "Admin");
+        }
     }
 }
 

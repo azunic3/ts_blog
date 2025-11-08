@@ -13,5 +13,51 @@
     <div class="blogPostContent">
       <markdown [data]="blogPost.content"></markdown>
     </div>
+
+    <!-- Comments Section -->
+    <div class="comments-section mt-5">
+      <h4 class="mb-3">Comments ({{ comments.length }})</h4>
+
+      <!-- Existing comments -->
+      <div *ngIf="comments.length > 0; else noComments">
+        <div *ngFor="let comment of comments" class="comment mb-3 p-3 border rounded">
+          <p class="mb-1"><strong>{{ comment.author }}</strong></p>
+          <p class="mb-0">{{ comment.text }}</p>
+          <small class="text-muted">{{ comment.date | date:'medium' }}</small>
+        </div>
+      </div>
+      <ng-template #noComments>
+        <p class="text-muted">No comments yet. Be the first to comment!</p>
+      </ng-template>
+
+      <!-- Add new comment -->
+      <form (ngSubmit)="addComment()" class="mt-4">
+        <div class="mb-3">
+          <label for="commentAuthor" class="form-label">Name</label>
+          <input
+            id="commentAuthor"
+            type="text"
+            class="form-control"
+            [(ngModel)]="newComment.author"
+            name="author"
+            required
+          />
+        </div>
+
+        <div class="mb-3">
+          <label for="commentText" class="form-label">Comment</label>
+          <textarea
+            id="commentText"
+            class="form-control"
+            rows="3"
+            [(ngModel)]="newComment.text"
+            name="text"
+            required
+          ></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Post Comment</button>
+      </form>
+    </div>
   </div>
 </div>

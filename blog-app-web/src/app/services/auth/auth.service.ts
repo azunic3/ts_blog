@@ -7,31 +7,34 @@ import { jwtDecode } from 'jwt-decode';
 import { DecodedToken } from '../../models/token.model';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class AuthService {
-  private apiUrl = environment.apiUrl; // Zameni sa svojim URL-om
+  private apiUrl = environment.apiUrl;
 
   constructor(private http: HttpClient) {}
 
   login(username: string, password: string): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/Auth/Login`, { username, password }).pipe(
-      tap((response: any) => {
-        localStorage.setItem('jwtToken', response.token);
-      })
-    );
+    return this.http
+      .post<any>(`${this.apiUrl}/Auth/Login`, { username, password })
+      .pipe(
+        tap((response: any) => {
+          localStorage.setItem('jwtToken', response.token);
+        })
+      );
   }
 
   register(username: string, email: string, password: string): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/Auth/Register`, { username, email, password });
+    return this.http.post<any>(`${this.apiUrl}/Auth/Register`, {
+      username,
+      email,
+      password,
+    });
   }
 
-  // Proverava da li je korisnik prijavljen
   isLoggedIn(): boolean {
-    return this.isAuthenticated(); // Možeš koristiti isAuthenticated ili napraviti logiku ovde
+    return this.isAuthenticated();
   }
-
-
 
   isAuthenticated(): boolean {
     return !!localStorage.getItem('jwtToken');
@@ -48,11 +51,15 @@ export class AuthService {
   isAdmin(): boolean {
     const token = this.getToken();
     if (token) {
-      const decodedToken = jwtDecode<DecodedToken>(token);
+      const decodedToken = jwtDecode<any>(token);
 
-      return decodedToken.role === 'Admin';
+      const roles =
+        decodedToken[
+          'http://schemas.microsoft.com/ws/2008/06/identity/claims/role'
+        ];
+      return Array.isArray(roles) ? roles.includes('Admin') : roles === 'Admin';
     }
-    
+
     return false;
   }
 }

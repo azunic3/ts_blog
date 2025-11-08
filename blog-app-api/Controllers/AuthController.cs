@@ -1,5 +1,7 @@
-﻿using BlogAppAPI.Models.DTO;
+﻿using BlogAppAPI.Models.Domain;
+using BlogAppAPI.Models.DTO;
 using BlogAppAPI.Repositories;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
@@ -8,6 +10,7 @@ namespace BlogAppAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [AllowAnonymous]
     public class AuthController : ControllerBase
     {
         private readonly IAuthRepository _authRepository;
@@ -19,6 +22,8 @@ namespace BlogAppAPI.Controllers
 
         [HttpPost("Login")]
         [SwaggerOperation("Login for Access Token")]
+        [AllowAnonymous]
+
         public async Task<IActionResult> Login([FromBody] UserLoginDto user)
         {
             if (!ModelState.IsValid)
@@ -39,6 +44,7 @@ namespace BlogAppAPI.Controllers
 
         [HttpPost("Register")]
         [SwaggerOperation("Register User")]
+        [AllowAnonymous]
         public async Task<IActionResult> Register([FromBody] UserCreateDto user)
         {
             if (!ModelState.IsValid)
@@ -46,7 +52,7 @@ namespace BlogAppAPI.Controllers
                 return BadRequest(ModelState);
             }
 
-            var newUser = new IdentityUser
+            var newUser = new ApplicationUser
             {
                 UserName = user.Username,
                 Email = user.Email,

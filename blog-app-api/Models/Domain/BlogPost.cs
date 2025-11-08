@@ -15,5 +15,6 @@ namespace BlogAppAPI.Models.Domain
         public required string Author {  get; set; }
         public bool IsVisible { get; set; }
         public ICollection<Category> Categories { get; set; }
+        public ICollection<Comment> Comments { get; set; }    
     }
 }

@@ -18,6 +18,7 @@ import { HTTP_INTERCEPTORS } from '@angular/common/http';
 import { AuthInterceptor } from './interceptors/auth.service';
 import { RegisterComponent } from './register/register.component';
 import { EditBlogPostComponent } from './components/edit-blogpost/edit-blogpost.component';
+import { CommentsComponent } from './components/comments/comments.component';
 
 @NgModule({
   declarations: [
@@ -32,7 +33,8 @@ import { EditBlogPostComponent } from './components/edit-blogpost/edit-blogpost.
     BlogpostDetailsComponent,
     LoginComponent,
     RegisterComponent,
-    EditBlogPostComponent
+    EditBlogPostComponent,
+    CommentsComponent
   ],
   imports: [
     BrowserModule,

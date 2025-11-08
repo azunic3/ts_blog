@@ -14,5 +14,8 @@ namespace BlogAppAPI.Models.DTO
         public string Author { get; set; }
         public bool IsVisible { get; set; }
         public List<CategoryGetDto> Categories { get; set; }
+
+        public List<CommentGetDto> Comments { get; set; } = new();
+
     }
 }

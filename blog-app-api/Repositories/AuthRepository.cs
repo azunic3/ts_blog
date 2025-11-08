@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using BlogAppAPI.Models.Domain;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -9,18 +10,18 @@ namespace BlogAppAPI.Repositories
     public class AuthRepository : IAuthRepository
     {
 
-        private readonly UserManager<IdentityUser> _userManager; // Provided function by ASP.NET for user management operations.
+        private readonly UserManager<ApplicationUser> _userManager; // Provided function by ASP.NET for user management operations.
         private readonly IConfiguration _configuration; // For appsettings.json access.
-        private readonly SignInManager<IdentityUser> _signInManager; // For sign in management operations.
+        private readonly SignInManager<ApplicationUser> _signInManager; // For sign in management operations.
 
-        public AuthRepository(UserManager<IdentityUser> userManager, IConfiguration configuration, SignInManager<IdentityUser> signInManager)
+        public AuthRepository(UserManager<ApplicationUser> userManager, IConfiguration configuration, SignInManager<ApplicationUser> signInManager)
         {
             _userManager = userManager;
             _configuration = configuration;
             _signInManager = signInManager;
         }
 
-        public async Task<IdentityUser> LoginAsync(string username, string password)
+        public async Task<ApplicationUser> LoginAsync(string username, string password)
         {
             var result = await _signInManager.PasswordSignInAsync(username, password, false, lockoutOnFailure: true);
 
@@ -33,7 +34,7 @@ namespace BlogAppAPI.Repositories
         }
 
         // Method that generates a JWT token.
-        public async Task<string> GenerateJwtTokenAsync(IdentityUser user)
+        public async Task<string> GenerateJwtTokenAsync(ApplicationUser user)
         {
             // User specific data used in the token payload. Here we use username, user id and adding Jti, a id for the token.
             var claims = new List<Claim>
@@ -47,7 +48,7 @@ namespace BlogAppAPI.Repositories
             var roles = await _userManager.GetRolesAsync(user);
             foreach (var role in roles)
             {
-                claims.Add(new Claim("role", role));
+                claims.Add(new Claim(ClaimTypes.Role, role));
             }
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]));
@@ -65,7 +66,7 @@ namespace BlogAppAPI.Repositories
         }
 
         // Method that registers and stores a new user into the database with the provided 'IdentityUser' object and password.
-        public async Task<IdentityResult> RegisterAsync(IdentityUser user, string password)
+        public async Task<IdentityResult> RegisterAsync(ApplicationUser user, string password)
         {
             
             var createUser = await _userManager.CreateAsync(user, password);
@@ -84,5 +85,6 @@ namespace BlogAppAPI.Repositories
 
             return createUser;
         }
+
     }
 }

@@ -10,6 +10,8 @@ namespace BlogAppAPI.Data
         public DbSet<Category> Categories { get; set; }
         public DbSet<BlogPost> BlogPosts { get; set; }
         public DbSet<BlogImage> BlogImages { get; set; }
+        public DbSet<Comment> Comments { get; set; }
+        
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options) 
         {
 
