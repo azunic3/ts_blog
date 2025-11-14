@@ -4,7 +4,6 @@ import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { environment } from 'src/environments/environment.staging';
 import { jwtDecode } from 'jwt-decode';
-import { DecodedToken } from '../../models/token.model';
 
 @Injectable({
   providedIn: 'root',
@@ -19,9 +18,18 @@ export class AuthService {
       .post<any>(`${this.apiUrl}/Auth/Login`, { username, password })
       .pipe(
         tap((response: any) => {
-          localStorage.setItem('jwtToken', response.token);
+          const token = response.token;
+          this.storeTokenWithRealExpiration(token);
         })
       );
+  }
+
+  logout(): void {
+    this.deleteCookie('jwtToken');
+  }
+
+  getToken(): string | null {
+    return this.getCookie('jwtToken');
   }
 
   register(username: string, email: string, password: string): Observable<any> {
@@ -32,34 +40,57 @@ export class AuthService {
     });
   }
 
+  isAuthenticated(): boolean {
+    const token = this.getToken();
+    if (!token) return false;
+
+    return !this.isTokenExpired(token);
+  }
+
   isLoggedIn(): boolean {
     return this.isAuthenticated();
   }
 
-  isAuthenticated(): boolean {
-    return !!localStorage.getItem('jwtToken');
-  }
-
-  logout(): void {
-    localStorage.removeItem('jwtToken');
-  }
-
-  getToken(): string | null {
-    return localStorage.getItem('jwtToken');
-  }
-
   isAdmin(): boolean {
     const token = this.getToken();
-    if (token) {
-      const decodedToken = jwtDecode<any>(token);
+    if (!token || this.isTokenExpired(token)) return false;
 
-      const roles =
-        decodedToken[
-          'http://schemas.microsoft.com/ws/2008/06/identity/claims/role'
-        ];
-      return Array.isArray(roles) ? roles.includes('Admin') : roles === 'Admin';
-    }
+    const decoded: any = jwtDecode(token);
+    const roles =
+      decoded[
+        'http://schemas.microsoft.com/ws/2008/06/identity/claims/role'
+      ];
 
-    return false;
+    return Array.isArray(roles) ? roles.includes('Admin') : roles === 'Admin';
+  }
+
+  private isTokenExpired(token: string): boolean {
+    const decoded: any = jwtDecode(token);
+
+    if (!decoded.exp) return true;
+
+    const now = Date.now() / 1000; // seconds
+    return decoded.exp < now;
+  }
+
+  private storeTokenWithRealExpiration(token: string) {
+    const decoded: any = jwtDecode(token);
+
+    const exp = decoded.exp * 1000;
+
+    const expirationDate = new Date(exp);
+    document.cookie =
+      `jwtToken=${token}; expires=${expirationDate.toUTCString()}; path=/; SameSite=Strict; Secure`;
+  }
+
+  private getCookie(name: string): string | null {
+    const cookies = document.cookie.split('; ');
+    const found = cookies.find((row) => row.startsWith(name + '='));
+    return found ? found.split('=')[1] : null;
+  }
+
+  private deleteCookie(name: string) {
+    document.cookie =
+      `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
   }
 }

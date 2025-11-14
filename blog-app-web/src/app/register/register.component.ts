@@ -19,15 +19,17 @@ export class RegisterComponent {
   register(): void {
     this.authService
       .register(this.username, this.email, this.password)
-      .subscribe((response) => {
-        this.username = '';
-        this.email = '';
-        this.password = '';
-        alert('Registration successful!');
-        this.router.navigate(['/login']);
-      },
-    (error) => {
-      this.errorMessage = "Error registering user.";
-    });
+      .subscribe(
+        (response: any) => {
+          this.username = '';
+          this.email = '';
+          this.password = '';
+          alert('Registration successful!');
+          this.router.navigate(['/login']);
+        },
+        (error: any) => {
+          this.errorMessage = "Error registering user.";
+        }
+      );      
   }
 }
