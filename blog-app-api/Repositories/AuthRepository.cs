@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace BlogAppAPI.Repositories
@@ -34,36 +35,51 @@ namespace BlogAppAPI.Repositories
         }
 
         // Method that generates a JWT token.
-        public async Task<string> GenerateJwtTokenAsync(ApplicationUser user)
+        public async Task<(string accessToken, RefreshToken refreshToken)> GenerateTokensAsync(ApplicationUser user)
         {
-            // User specific data used in the token payload. Here we use username, user id and adding Jti, a id for the token.
+            // CLAIMS
             var claims = new List<Claim>
-            {
-                new Claim(JwtRegisteredClaimNames.Sub, user.UserName),
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                new Claim("id", user.Id)
-            };
+    {
+        new Claim(JwtRegisteredClaimNames.Sub, user.UserName),
+        new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+        new Claim("id", user.Id)
+    };
 
-            // Add role 
+            // ADD ROLES
             var roles = await _userManager.GetRolesAsync(user);
             foreach (var role in roles)
             {
                 claims.Add(new Claim(ClaimTypes.Role, role));
             }
 
+            // KEY
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]));
             var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-            // Generate the token based on the user data, token config in appsettings.json, key and credentials.
-            var token = new JwtSecurityToken(
+            // ACCESS TOKEN (valid 60 min)
+            var jwtToken = new JwtSecurityToken(
                 issuer: _configuration["Jwt:Issuer"],
                 audience: _configuration["Jwt:Audience"],
                 claims: claims,
-                expires: DateTime.Now.AddMinutes(60),
-                signingCredentials: credentials);
+                expires: DateTime.UtcNow.AddMinutes(60),
+                signingCredentials: credentials
+            );
 
-            return new JwtSecurityTokenHandler().WriteToken(token);
+            string accessToken = new JwtSecurityTokenHandler().WriteToken(jwtToken);
+
+            // REFRESH TOKEN (valid 7 days)
+            var refreshToken = new RefreshToken
+            {
+                Token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64)),
+                UserId = user.Id,
+                Created = DateTime.UtcNow,
+                Expires = DateTime.UtcNow.AddDays(7)
+            };
+
+            // RETURN BOTH
+            return (accessToken, refreshToken);
         }
+
 
         // Method that registers and stores a new user into the database with the provided 'IdentityUser' object and password.
         public async Task<IdentityResult> RegisterAsync(ApplicationUser user, string password)
@@ -86,5 +102,16 @@ namespace BlogAppAPI.Repositories
             return createUser;
         }
 
+        //generate Refresh Token
+        private RefreshToken GenerateRefreshToken(string userId)
+        {
+            return new RefreshToken
+            {
+                Token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64)),
+                UserId = userId,
+                Expires = DateTime.UtcNow.AddDays(7),
+                Created = DateTime.UtcNow
+            };
+        }
     }
 }

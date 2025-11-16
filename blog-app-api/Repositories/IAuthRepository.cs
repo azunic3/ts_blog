@@ -7,6 +7,6 @@ namespace BlogAppAPI.Repositories
     {
         Task<ApplicationUser> LoginAsync(string username, string password);
         Task<IdentityResult> RegisterAsync(ApplicationUser user, string password);
-        Task<string> GenerateJwtTokenAsync(ApplicationUser user);
+        Task<(string accessToken, RefreshToken refreshToken)> GenerateTokensAsync(ApplicationUser user);
     }
 }
