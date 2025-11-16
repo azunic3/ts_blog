@@ -20,7 +20,9 @@ export class NavbarComponent {
 
   // Metoda za odjavu korisnika
   logout(): void {
-    this.authService.logout(); // Poziva logout metodu iz AuthService
-    this.router.navigate(['/']); // Preusmerava na početnu stranicu
+    this.authService.logout().subscribe(() => {
+      this.router.navigate(['/']);
+    });
   }
+  
 }

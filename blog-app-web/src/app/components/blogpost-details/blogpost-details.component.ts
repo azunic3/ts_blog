@@ -31,7 +31,6 @@ export class BlogpostDetailsComponent implements OnInit {
     categories: [],
   };
 
-  // 🗨️ Comments section
   comments: { author: string; text: string; date: Date }[] = [];
   newComment = { author: '', text: '' };
 
@@ -43,7 +42,7 @@ export class BlogpostDetailsComponent implements OnInit {
       }
     });
 
-    // Optionally auto-fill author if user is logged in
+    //Optionally auto-fill author if user is logged in
     //const currentUser = this.authService.getUser();
     //if (currentUser && currentUser.name) {
       //this.newComment.author = currentUser.name;
@@ -56,7 +55,6 @@ export class BlogpostDetailsComponent implements OnInit {
     });
   }
 
-  // ➕ Add comment
   addComment() {
     if (this.newComment.author.trim() && this.newComment.text.trim()) {
       this.comments.push({

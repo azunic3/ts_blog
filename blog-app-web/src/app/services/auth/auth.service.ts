@@ -24,9 +24,12 @@ export class AuthService {
       );
   }
 
-  logout(): void {
+  logout(): Observable<any> {
     this.deleteCookie('jwtToken');
+    return this.http.post(`${this.apiUrl}/Auth/Logout`, {}, { withCredentials: true });
   }
+  
+  
 
   getToken(): string | null {
     return this.getCookie('jwtToken');
@@ -93,4 +96,17 @@ export class AuthService {
     document.cookie =
       `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
   }
+
+  refresh(): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/Auth/Refresh`, {}, { withCredentials: true });
+  }
+
+  saveAccessToken(token: string) {
+    const decoded: any = jwtDecode(token);
+    const exp = decoded.exp * 1000;
+    const expires = new Date(exp).toUTCString();
+  
+    document.cookie = `jwtToken=${token}; expires=${expires}; path=/; SameSite=Strict; Secure`;
+  }
+  
 }

@@ -100,11 +100,15 @@ builder.Services.AddAuthorization();
 // --------------------------------------------------
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", policy =>
-        policy.AllowAnyOrigin()
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy.WithOrigins("https://localhost:4200")  // Angular app
               .AllowAnyHeader()
-              .AllowAnyMethod());
+              .AllowAnyMethod()
+              .AllowCredentials();   // REQUIRED for refreshToken cookie
+    });
 });
+
 
 // --------------------------------------------------
 // 7?? Build aplikacije
@@ -160,7 +164,7 @@ using (var scope = app.Services.CreateScope())
 // --------------------------------------------------
 // 9?? Middleware pipeline
 // --------------------------------------------------
-app.UseCors("AllowAll");
+app.UseCors("AllowFrontend");   // MUST be before auth
 
 if (app.Environment.IsDevelopment())
 {
