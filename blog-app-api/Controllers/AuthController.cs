@@ -10,183 +10,197 @@ using System.Security.Claims;
 
 namespace BlogAppAPI.Controllers
 {
-    [ApiController]
-    [Route("api/[controller]")]
-    [AllowAnonymous]
-    public class AuthController : ControllerBase
-    {
-        private readonly IAuthRepository _authRepository;
-        private readonly ApplicationDbContext _context;
-        private readonly UserManager<ApplicationUser> _userManager;
+	[ApiController]
+	[Route("api/[controller]")]
+	public class AuthController : ControllerBase
+	{
+		private readonly IAuthRepository _authRepository;
+		private readonly ApplicationDbContext _context;
+		private readonly UserManager<ApplicationUser> _userManager;
 
-        public AuthController(
-            IAuthRepository authRepository,
-            ApplicationDbContext context,
-            UserManager<ApplicationUser> userManager)
-        {
-            _authRepository = authRepository;
-            _context = context;
-            _userManager = userManager;
-        }
+		public AuthController(
+			IAuthRepository authRepository,
+			ApplicationDbContext context,
+			UserManager<ApplicationUser> userManager)
+		{
+			_authRepository = authRepository;
+			_context = context;
+			_userManager = userManager;
+		}
 
-        [HttpPost("Login")]
-        public async Task<IActionResult> Login([FromBody] UserLoginDto user)
-        {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+		[AllowAnonymous]
+		[HttpPost("Login")]
+		public async Task<IActionResult> Login([FromBody] UserLoginDto user)
+		{
+			if (!ModelState.IsValid)
+				return BadRequest(ModelState);
 
-            var foundUser = await _authRepository.LoginAsync(user.Username, user.Password);
+			var foundUser = await _authRepository.LoginAsync(user.Username, user.Password);
 
-            if (foundUser == null)
-                return Unauthorized("Invalid username or password.");
+			if (foundUser == null)
+				return Unauthorized("Invalid username or password.");
 
-            var (accessToken, refreshToken) = await _authRepository.GenerateTokensAsync(foundUser);
+			var (accessToken, refreshToken) =
+				await _authRepository.GenerateTokensAsync(foundUser);
 
-            _context.RefreshTokens.Add(refreshToken);
-            await _context.SaveChangesAsync();
+			_context.RefreshTokens.Add(refreshToken);
+			await _context.SaveChangesAsync();
 
-            SetRefreshTokenCookie(refreshToken);
+			SetRefreshTokenCookie(refreshToken);
 
-            return Ok(new { token = accessToken });
-        }
+			return Ok(new { token = accessToken });
+		}
 
-       [HttpPost("Register")]
-public async Task<IActionResult> Register([FromBody] UserCreateDto user)
-{
-    if (!ModelState.IsValid)
-        return BadRequest(ModelState);
+		[AllowAnonymous]
+		[HttpPost("Register")]
+		public async Task<IActionResult> Register([FromBody] UserCreateDto user)
+		{
+			if (!ModelState.IsValid)
+				return BadRequest(ModelState);
 
-    var newUser = new ApplicationUser
-    {
-        UserName = user.Username,
-        Email = user.Email,
+			var newUser = new ApplicationUser
+			{
+				UserName = user.Username,
+				Email = user.Email,
+				FullName = user.FullName,
+				Bio = string.IsNullOrWhiteSpace(user.Bio) ? "" : user.Bio,
+				ProfileImageUrl = string.IsNullOrWhiteSpace(user.ProfileImageUrl)
+					? "default.png"
+					: user.ProfileImageUrl
+			};
 
-        FullName = user.FullName,
-        Bio = string.IsNullOrWhiteSpace(user.Bio) ? "" : user.Bio,
-        ProfileImageUrl = string.IsNullOrWhiteSpace(user.ProfileImageUrl)
-            ? "default.png"
-            : user.ProfileImageUrl
-    };
+			var result = await _authRepository.RegisterAsync(newUser, user.Password);
 
-    var result = await _authRepository.RegisterAsync(newUser, user.Password);
+			if (!result.Succeeded)
+				return BadRequest(result.Errors.Select(e => e.Description));
 
-    if (!result.Succeeded)
-        return BadRequest(result.Errors.Select(e => e.Description));
+			var (accessToken, refreshToken) =
+				await _authRepository.GenerateTokensAsync(newUser);
 
-    var (accessToken, refreshToken) =
-        await _authRepository.GenerateTokensAsync(newUser);
+			_context.RefreshTokens.Add(refreshToken);
+			await _context.SaveChangesAsync();
 
-    _context.RefreshTokens.Add(refreshToken);
-    await _context.SaveChangesAsync();
+			SetRefreshTokenCookie(refreshToken);
 
-    SetRefreshTokenCookie(refreshToken);
+			return Ok(new { token = accessToken });
+		}
 
-    return Ok(new { token = accessToken });
-}
+		[AllowAnonymous]
+		[HttpPost("Refresh")]
+		public async Task<IActionResult> Refresh()
+		{
+			var refreshToken = Request.Cookies["refreshToken"];
 
-        [HttpPost("Refresh")]
-        public async Task<IActionResult> Refresh()
-        {
-            var refreshToken = Request.Cookies["refreshToken"];
-            if (refreshToken == null)
-                return Unauthorized("Missing refresh token");
+			if (refreshToken == null)
+				return Unauthorized("Missing refresh token");
 
-            var storedToken = await _context.RefreshTokens
-                .FirstOrDefaultAsync(x => x.Token == refreshToken);
+			var storedToken = await _context.RefreshTokens
+				.FirstOrDefaultAsync(x => x.Token == refreshToken);
 
-            if (storedToken == null || !storedToken.IsActive)
-                return Unauthorized("Invalid refresh token");
+			if (storedToken == null || !storedToken.IsActive)
+				return Unauthorized("Invalid refresh token");
 
-            var user = await _userManager.Users
-                .FirstOrDefaultAsync(u => u.Id == storedToken.UserId);
+			var user = await _userManager.Users
+				.FirstOrDefaultAsync(u => u.Id == storedToken.UserId);
 
-            if (user == null)
-                return Unauthorized();
+			if (user == null)
+				return Unauthorized();
 
-            // Revoke the old refresh token
-            storedToken.Revoked = DateTime.UtcNow;
+			storedToken.Revoked = DateTime.UtcNow;
 
-            var (newAccessToken, newRefreshToken) = await _authRepository.GenerateTokensAsync(user);
+			var (newAccessToken, newRefreshToken) =
+				await _authRepository.GenerateTokensAsync(user);
 
-            _context.RefreshTokens.Add(newRefreshToken);
-            await _context.SaveChangesAsync();
+			_context.RefreshTokens.Add(newRefreshToken);
+			await _context.SaveChangesAsync();
 
-            SetRefreshTokenCookie(newRefreshToken);
+			SetRefreshTokenCookie(newRefreshToken);
 
-            return Ok(new { token = newAccessToken });
-        }
+			return Ok(new { token = newAccessToken });
+		}
 
-        [HttpPost("Logout")]
-        public async Task<IActionResult> Logout()
-        {
-            var refreshToken = Request.Cookies["refreshToken"];
-            if (refreshToken != null)
-            {
-                var storedToken = await _context.RefreshTokens
-                    .FirstOrDefaultAsync(x => x.Token == refreshToken);
+		[Authorize]
+		[HttpPost("Logout")]
+		public async Task<IActionResult> Logout()
+		{
+			var refreshToken = Request.Cookies["refreshToken"];
 
-                if (storedToken != null)
-                {
-                    storedToken.Revoked = DateTime.UtcNow;
-                    await _context.SaveChangesAsync();
-                }
+			if (refreshToken != null)
+			{
+				var storedToken = await _context.RefreshTokens
+					.FirstOrDefaultAsync(x => x.Token == refreshToken);
 
-                Response.Cookies.Delete("refreshToken");
-            }
+				if (storedToken != null)
+				{
+					storedToken.Revoked = DateTime.UtcNow;
+					await _context.SaveChangesAsync();
+				}
 
-            return Ok("Logged out.");
-        }
+				Response.Cookies.Delete("refreshToken");
+			}
 
-        [HttpGet("profile")]
-        public async Task<IActionResult> GetProfile()
-        {
-            var userId = User.FindFirstValue("id");
+			return Ok("Logged out.");
+		}
 
-            var user = await _authRepository.GetUserById(userId);
+		[Authorize]
+		[HttpGet("profile")]
+		public async Task<IActionResult> GetProfile()
+		{
+			var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            if (user == null) return NotFound();
+			if (string.IsNullOrEmpty(userId))
+				return Unauthorized();
 
-            var dto = new UserProfileDto
-            {
-                Id = user.Id,
-                Email = user.Email,
-                FullName = user.FullName,
-                Bio = user.Bio,
-                ProfileImageUrl = user.ProfileImageUrl
-            };
+			var user = await _authRepository.GetUserById(userId);
 
-            return Ok(dto);
-        }
+			if (user == null)
+				return NotFound();
 
-        [HttpPut("profile")]
-        [Authorize]
-        public async Task<IActionResult> UpdateProfile([FromBody] UpdateUserProfileDto model)
-        {
-            var userId = User.FindFirstValue("id");
-            var user = await _authRepository.GetUserById(userId);
+			var dto = new UserProfileDto
+			{
+				Id = user.Id,
+				Email = user.Email,
+				FullName = user.FullName,
+				Bio = user.Bio,
+				ProfileImageUrl = user.ProfileImageUrl
+			};
 
-            if (user == null)
-                return NotFound();
+			return Ok(dto);
+		}
 
-            user.FullName = model.FullName;
-            user.Bio = model.Bio;
-            user.ProfileImageUrl = model.ProfileImageUrl;
+		[Authorize]
+		[HttpPut("profile")]
+		public async Task<IActionResult> UpdateProfile([FromBody] UpdateUserProfileDto model)
+		{
+			var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            await _authRepository.UpdateUser(user);
+			if (string.IsNullOrEmpty(userId))
+				return Unauthorized();
 
-            return Ok(new { message = "Profile updated successfully" });
-        }
+			var user = await _authRepository.GetUserById(userId);
 
-        //helper method
-        private void SetRefreshTokenCookie(RefreshToken token)
-        {
-            Response.Cookies.Append("refreshToken", token.Token, new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = true,
-                SameSite = SameSiteMode.Strict,
-                Expires = token.Expires
-            });
-        }
-    }
+			if (user == null)
+				return NotFound();
+
+			user.FullName = model.FullName;
+			user.Bio = model.Bio;
+			user.ProfileImageUrl = model.ProfileImageUrl;
+
+			await _authRepository.UpdateUser(user);
+
+			return Ok(new { message = "Profile updated successfully" });
+		}
+
+
+		private void SetRefreshTokenCookie(RefreshToken token)
+		{
+			Response.Cookies.Append("refreshToken", token.Token, new CookieOptions
+			{
+				HttpOnly = true,
+				Secure = true,
+				SameSite = SameSiteMode.Strict,
+				Expires = token.Expires
+			});
+		}
+	}
 }
