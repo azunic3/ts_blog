@@ -1,15 +1,31 @@
 <div class="container page-wrap">
   <div class="theme-surface admin-card p-3 p-md-4">
 
-    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
-      <h2 class="page-title m-0">Blog posts</h2>
+    <div
+      class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2"
+    >
+      <h2 class="page-title m-0">
+        {{ authService.isAdmin() ? 'All blog posts' : 'My blog posts' }}
+      </h2>
 
-      <button type="button" class="btn btn-primary" (click)="navigateToAddBlogPost()">
+      <button
+        type="button"
+        class="btn btn-primary"
+        (click)="navigateToAddBlogPost()"
+      >
         + Add blog post
       </button>
     </div>
 
-    <div class="table-responsive">
+    <div *ngIf="errorMessage" class="alert alert-danger mb-3">
+      {{ errorMessage }}
+    </div>
+
+    <div *ngIf="loading" class="text-center text-muted py-4">
+      Loading blog posts...
+    </div>
+
+    <div class="table-responsive" *ngIf="!loading">
       <table class="table admin-table align-middle mb-0">
         <thead class="admin-thead">
           <tr>
@@ -23,6 +39,7 @@
 
         <tbody>
           <tr *ngFor="let blogPost of blogPosts" class="admin-row">
+
             <td class="fw-semibold">
               {{ blogPost.title }}
               <div class="text-muted small d-lg-none mt-1">
@@ -35,14 +52,20 @@
             </td>
 
             <td>
-              <span class="status-pill" [class.status-pill--on]="blogPost.isVisible">
+              <span
+                class="status-pill"
+                [class.status-pill--on]="blogPost.isVisible"
+              >
                 {{ blogPost.isVisible ? 'Visible' : 'Hidden' }}
               </span>
             </td>
 
             <td>
               <div class="d-flex flex-wrap gap-1">
-                <span class="chip" *ngFor="let category of blogPost.categories">
+                <span
+                  class="chip"
+                  *ngFor="let category of blogPost.categories"
+                >
                   {{ category.name }}
                 </span>
               </div>
@@ -50,25 +73,29 @@
 
             <td class="text-end">
               <div class="d-inline-flex gap-2" style="white-space: nowrap;">
+
                 <a
-                  [routerLink]="['/admin/blogposts/edit', blogPost.id]"
+                  [routerLink]="['/blogposts/edit', blogPost.id]"
                   class="btn btn-outline-primary btn-sm"
                 >
                   Edit
                 </a>
 
                 <button
+                  *ngIf="authService.isAdmin()"
                   type="button"
                   class="btn btn-outline-danger btn-sm"
                   (click)="deleteBlogPost(blogPost.id)"
                 >
                   Delete
                 </button>
+
               </div>
             </td>
           </tr>
 
-          <tr *ngIf="blogPosts.length === 0">
+          <!-- EMPTY STATE -->
+          <tr *ngIf="!loading && blogPosts.length === 0">
             <td colspan="5" class="text-center text-muted py-4">
               No blog posts yet.
             </td>
@@ -77,12 +104,16 @@
       </table>
     </div>
 
-    <div class="d-flex justify-content-between align-items-center mt-3">
+    <!-- PAGINATION -->
+    <div
+      class="d-flex justify-content-between align-items-center mt-3"
+      *ngIf="!loading && blogPosts.length > 0"
+    >
       <button
-        (click)="previousPage()"
         type="button"
         class="btn btn-outline-primary"
-        *ngIf="page !== 1"
+        (click)="previousPage()"
+        [disabled]="page === 1"
       >
         Previous
       </button>
@@ -90,10 +121,10 @@
       <div class="text-muted small">Page {{ page }}</div>
 
       <button
-        (click)="nextPage()"
         type="button"
         class="btn btn-outline-primary"
-        *ngIf="pages !== -1"
+        (click)="nextPage()"
+        [disabled]="pages === -1"
       >
         Next
       </button>

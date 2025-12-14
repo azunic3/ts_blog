@@ -1,4 +1,4 @@
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { CommentGetDto } from 'src/app/models/comment.model';
 import { AuthService } from 'src/app/services/auth/auth.service';
@@ -9,11 +9,11 @@ import { CommentService } from 'src/app/services/comments.service';
   templateUrl: './comments.component.html',
   styleUrls: ['./comments.component.css'],
 })
-export class CommentsComponent implements OnInit {
-  @Input() blogPostId!: string;
+export class CommentsComponent implements OnChanges {
+  @Input() blogPostId: string | null = null;
 
   comments: CommentGetDto[] = [];
-  loading = true;
+  loading = false;
   error?: string;
 
   form: FormGroup;
@@ -29,25 +29,29 @@ export class CommentsComponent implements OnInit {
     });
   }
 
-  ngOnInit(): void {
-    this.load();
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['blogPostId']) {
+      const id = this.blogPostId?.trim();
+      if (!id) return;          // ✅ ne šalji /blog/ bez ID-a
+      this.load(id);
+    }
   }
 
-get isLoggedIn(): boolean {
-  return this.authService.isLoggedIn();
-}
+  get isLoggedIn(): boolean {
+    return this.authService.isLoggedIn();
+  }
 
-get isAdmin(): boolean {
-  return this.authService.isAdmin();
-}
+  get isAdmin(): boolean {
+    return this.authService.isAdmin();
+  }
 
-  load(): void {
+  private load(id: string): void {
     this.loading = true;
     this.error = undefined;
 
-    this.commentService.getByBlog(this.blogPostId).subscribe({
+    this.commentService.getByBlog(id).subscribe({
       next: (data) => {
-        this.comments = data;
+        this.comments = data ?? [];
         this.loading = false;
       },
       error: () => {
@@ -63,6 +67,9 @@ get isAdmin(): boolean {
       return;
     }
 
+    const id = this.blogPostId?.trim();
+    if (!id) return;
+
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;
@@ -72,13 +79,13 @@ get isAdmin(): boolean {
     this.error = undefined;
 
     this.commentService.add({
-      blogPostId: this.blogPostId,
+      blogPostId: id,
       content: this.form.value.content,
     }).subscribe({
       next: () => {
         this.form.reset();
         this.saving = false;
-        this.load();
+        this.load(id);
       },
       error: () => {
         this.error = 'Failed to add comment.';
@@ -90,8 +97,11 @@ get isAdmin(): boolean {
   deleteComment(id: string): void {
     if (!this.isAdmin) return;
 
+    const blogId = this.blogPostId?.trim();
+    if (!blogId) return;
+
     this.commentService.delete(id).subscribe({
-      next: () => this.load(),
+      next: () => this.load(blogId),
       error: () => (this.error = 'Failed to delete comment.'),
     });
   }

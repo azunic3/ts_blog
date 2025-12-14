@@ -17,19 +17,45 @@
     <div class="collapse navbar-collapse" id="nav">
       <ul class="navbar-nav me-auto align-items-lg-center gap-lg-1">
         <li class="nav-item">
-          <a class="nav-link" [routerLink]="['/']" routerLinkActive="active" [routerLinkActiveOptions]="{exact:true}">
+          <a
+            class="nav-link"
+            [routerLink]="['/']"
+            routerLinkActive="active"
+            [routerLinkActiveOptions]="{ exact: true }"
+          >
             Home
           </a>
         </li>
 
-        <li class="nav-item">
-          <a class="nav-link" [routerLink]="['/admin/blogposts']" routerLinkActive="active">
+        <li class="nav-item" *ngIf="authService.isLoggedIn()">
+          <a
+            class="nav-link"
+            [routerLink]="['/blogposts']"
+            routerLinkActive="active"
+          >
             Posts
           </a>
         </li>
 
-        <li class="nav-item" *ngIf="authService.isLoggedIn() && authService.isAdmin()">
-              <a class="nav-link" [routerLink]="['/admin/categories']">Categories</a>
+        <li
+          class="nav-item"
+          *ngIf="authService.isLoggedIn() && authService.isAdmin()"
+        >
+          <a class="nav-link" [routerLink]="['/admin/categories']"
+            >Categories</a
+          >
+        </li>
+        <li
+          class="nav-item"
+          *ngIf="authService.isLoggedIn() && authService.isAdmin()"
+        >
+          <a
+            class="nav-link"
+            [routerLink]="['/admin/users']"
+            routerLinkActive="active"
+          >
+            Users
+          </a>
         </li>
       </ul>
 
@@ -39,11 +65,21 @@
         </li>
 
         <li class="nav-item" *ngIf="!authService.isLoggedIn()">
-          <a class="btn btn-primary" [routerLink]="['/login']">Login</a>
+          <a class="btn btn-outline-secondary" [routerLink]="['/register']"
+            >Sign up</a
+          >
+        </li>
+
+        <li class="nav-item" *ngIf="!authService.isLoggedIn()">
+          <a class="btn btn-primary" [routerLink]="['/login']">Sign in</a>
         </li>
 
         <li class="nav-item" *ngIf="authService.isLoggedIn()">
-          <button class="btn btn-outline-secondary" (click)="logout()" type="button">
+          <button
+            class="btn btn-outline-secondary"
+            (click)="logout()"
+            type="button"
+          >
             Logout
           </button>
         </li>

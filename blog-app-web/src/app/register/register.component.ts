@@ -6,30 +6,39 @@ import { Router } from '@angular/router';
   selector: 'app-register',
   templateUrl: './register.component.html',
   styleUrls: ['./register.component.css'],
-  providers: [AuthService]
+  providers: [AuthService],
 })
 export class RegisterComponent {
-  username: string = '';
-  password: string = '';
-  email: string = '';
-  errorMessage: string = '';
+  username = '';
+  email = '';
+  password = '';
+
+  fullName = '';
+  bio = '';
+  profileImageUrl = '';
+
+  errorMessage = '';
 
   constructor(private authService: AuthService, private router: Router) {}
 
   register(): void {
     this.authService
-      .register(this.username, this.email, this.password)
-      .subscribe(
-        (response: any) => {
-          this.username = '';
-          this.email = '';
-          this.password = '';
+      .register({
+        username: this.username,
+        email: this.email,
+        password: this.password,
+        fullName: this.fullName,
+        bio: this.bio,
+        profileImageUrl: this.profileImageUrl,
+      })
+      .subscribe({
+        next: () => {
           alert('Registration successful!');
           this.router.navigate(['/login']);
         },
-        (error: any) => {
-          this.errorMessage = "Error registering user.";
-        }
-      );      
+        error: (err) => {
+          this.errorMessage = err?.error?.[0] ?? 'Error registering user';
+        },
+      });
   }
 }

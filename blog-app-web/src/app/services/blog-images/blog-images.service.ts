@@ -1,38 +1,32 @@
-
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { BlogImagePost } from 'src/app/models/blog-image-post.model';
 import { BlogImage } from 'src/app/models/blog-image.model';
 import { environment } from 'src/environments/environment.staging';
+import { AuthService } from '../auth/auth.service';
 
-
-const httpOptions = {
-  headers: new HttpHeaders({
-    'Content-Type': 'application/json',
-  }),
-};
 @Injectable({
   providedIn: 'root'
 })
 export class BlogImagesService {
-
-  constructor(private http: HttpClient) { }
-
-  saveBlogImage(blogImage: BlogImagePost): Observable<BlogImagePost> {
-    return this.http.post<BlogImagePost>(`${environment.apiUrl}/BlogImages/Upload`, blogImage, httpOptions);
-  }
+  constructor(private http: HttpClient, private auth: AuthService) {}
 
   uploadImage(file: File, fileName: string, title: string): Observable<any> {
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', file, file.name);
     formData.append('fileName', fileName);
     formData.append('title', title);
 
-    return this.http.post(`${environment.apiUrl}/BlogImages/Upload`, formData);
+    const token = this.auth.getToken();
+
+    const headers = token
+      ? new HttpHeaders({ Authorization: `Bearer ${token}` })
+      : undefined;
+
+    return this.http.post(`${environment.apiUrl}/BlogImages/Upload`, formData, { headers });
   }
 
-  getBlogImages(): Observable<BlogImage[]>{
+  getBlogImages(): Observable<BlogImage[]> {
     return this.http.get<BlogImage[]>(`${environment.apiUrl}/BlogImages`);
   }
 }

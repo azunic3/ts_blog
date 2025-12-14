@@ -13,7 +13,6 @@ namespace BlogAppAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize(Roles = "Admin")]
     public class CategoryController : ControllerBase
     {
         private readonly ICategoryRepository _categoryRepository;
@@ -25,6 +24,7 @@ namespace BlogAppAPI.Controllers
 
         [HttpGet]
         [SwaggerOperation("Get All Categories")]
+        [AllowAnonymous]
         public async Task<IActionResult> Get()       {
             try
             {

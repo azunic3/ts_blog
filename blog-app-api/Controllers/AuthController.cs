@@ -50,33 +50,39 @@ namespace BlogAppAPI.Controllers
             return Ok(new { token = accessToken });
         }
 
-        [HttpPost("Register")]
-        public async Task<IActionResult> Register([FromBody] UserCreateDto user)
-        {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+       [HttpPost("Register")]
+public async Task<IActionResult> Register([FromBody] UserCreateDto user)
+{
+    if (!ModelState.IsValid)
+        return BadRequest(ModelState);
 
-            var newUser = new ApplicationUser
-            {
-                UserName = user.Username,
-                Email = user.Email,
-            };
+    var newUser = new ApplicationUser
+    {
+        UserName = user.Username,
+        Email = user.Email,
 
-            var result = await _authRepository.RegisterAsync(newUser, user.Password);
+        FullName = user.FullName,
+        Bio = string.IsNullOrWhiteSpace(user.Bio) ? "" : user.Bio,
+        ProfileImageUrl = string.IsNullOrWhiteSpace(user.ProfileImageUrl)
+            ? "default.png"
+            : user.ProfileImageUrl
+    };
 
-            if (!result.Succeeded)
-                return BadRequest(result.Errors);
+    var result = await _authRepository.RegisterAsync(newUser, user.Password);
 
-            // Automatically log in after register
-            var (accessToken, refreshToken) = await _authRepository.GenerateTokensAsync(newUser);
+    if (!result.Succeeded)
+        return BadRequest(result.Errors.Select(e => e.Description));
 
-            _context.RefreshTokens.Add(refreshToken);
-            await _context.SaveChangesAsync();
+    var (accessToken, refreshToken) =
+        await _authRepository.GenerateTokensAsync(newUser);
 
-            SetRefreshTokenCookie(refreshToken);
+    _context.RefreshTokens.Add(refreshToken);
+    await _context.SaveChangesAsync();
 
-            return Ok(new { token = accessToken });
-        }
+    SetRefreshTokenCookie(refreshToken);
+
+    return Ok(new { token = accessToken });
+}
 
         [HttpPost("Refresh")]
         public async Task<IActionResult> Refresh()

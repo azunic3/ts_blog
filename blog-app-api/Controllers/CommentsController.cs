@@ -48,11 +48,12 @@ namespace BlogAppAPI.Controllers
             return NoContent();
         }
 
-        [HttpGet("blog/{blogPostId}")]
-        public async Task<IActionResult> GetCommentsForBlog(Guid blogPostId)
-        {
-            var comments = await _repo.GetForBlogAsync(blogPostId);
-            return Ok(comments);
-        }
+[HttpGet("blog/{blogPostId:guid}")]
+public async Task<IActionResult> GetCommentsForBlog(Guid blogPostId)
+{
+    var comments = await _repo.GetForBlogAsync(blogPostId);
+    return Ok(comments);
+}
+
     }
 }

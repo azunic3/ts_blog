@@ -3,11 +3,10 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using BlogAppAPI.Models.Domain;
 using BlogAppAPI.Models.DTO;
-using Blog.Models.DTO;
 using Microsoft.AspNetCore.Authorization;
 using Swashbuckle.AspNetCore.Annotations;
 
-namespace Blog.Controllers
+namespace BlogAppAPI.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
@@ -15,7 +14,6 @@ namespace Blog.Controllers
     {
         private readonly IBlogImageRepository _blogImageRepository;
         private readonly IWebHostEnvironment _webHostEnvironment;
-        private readonly string _targetFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images");
 
         public BlogImagesController(IBlogImageRepository blogImageRepository, IWebHostEnvironment webHostEnvironment)
         {
@@ -23,15 +21,13 @@ namespace Blog.Controllers
             _webHostEnvironment = webHostEnvironment;
         }
 
-        // GET: api/images
         [HttpGet]
-        //[Authorize(Roles = "Admin")]
+        // [Authorize(Roles = "Admin")]
         [SwaggerOperation("Get All Images")]
         public async Task<ActionResult<IEnumerable<BlogImageDto>>> GetAllImages()
         {
             var images = await _blogImageRepository.GetAllImages();
 
-            
             var imagesDto = images.Select(image => new BlogImageDto
             {
                 Id = image.Id,
@@ -46,44 +42,44 @@ namespace Blog.Controllers
         }
 
         [HttpPost("Upload")]
-        [Authorize(Roles = "Admin")]
+        [Authorize]
         [SwaggerOperation("Upload Image")]
-        public async Task<IActionResult> UploadImage(IFormFile file, [FromForm] string fileName, [FromForm] string title)
+        public async Task<IActionResult> UploadImage(
+            [FromForm] IFormFile file,
+            [FromForm] string fileName,
+            [FromForm] string title)
         {
-            if (file == null || file.Length == 0)
-                return BadRequest("No file uploaded.");
-
-            if (string.IsNullOrEmpty(fileName))
-                return BadRequest("File name is required.");
-
-            if (string.IsNullOrEmpty(title))
-                return BadRequest("Title is required.");
-
-            if (!Directory.Exists(_targetFolder))
+            try
             {
-                Directory.CreateDirectory(_targetFolder);
-            }
+                if (file == null || file.Length == 0)
+                    return BadRequest("No file uploaded.");
 
-            var fileExtension = Path.GetExtension(file.FileName);
-            ValidateFileMethod(file);
-            if (ModelState.IsValid)
-            {
+                if (string.IsNullOrWhiteSpace(fileName))
+                    return BadRequest("File name is required.");
 
-                // Generate a unique filename with the provided fileName
+                if (string.IsNullOrWhiteSpace(title))
+                    return BadRequest("Title is required.");
+
+                ValidateFileMethod(file);
+                if (!ModelState.IsValid)
+                    return BadRequest(ModelState);
+
+                var targetFolder = Path.Combine(_webHostEnvironment.WebRootPath, "images");
+                if (!Directory.Exists(targetFolder))
+                    Directory.CreateDirectory(targetFolder);
+
+                var fileExtension = Path.GetExtension(file.FileName).ToLowerInvariant();
+
                 var uniqueFileName = $"{fileName}_{Guid.NewGuid()}{fileExtension}";
+                var fullPath = Path.Combine(targetFolder, uniqueFileName);
 
-                var filePath = Path.Combine(_targetFolder, uniqueFileName);
-
-                // Save the file to the server
-                using (var stream = new FileStream(filePath, FileMode.Create))
+                using (var stream = new FileStream(fullPath, FileMode.Create))
                 {
                     await file.CopyToAsync(stream);
                 }
 
-                // Generate the file URL
                 var fileUrl = $"{Request.Scheme}://{Request.Host}/images/{uniqueFileName}";
 
-                // Create a new BlogImage entry
                 var blogImage = new BlogImage
                 {
                     Id = Guid.NewGuid(),
@@ -91,31 +87,29 @@ namespace Blog.Controllers
                     FileExtension = fileExtension,
                     Title = title,
                     Url = fileUrl,
-                    DateCreated = DateTime.Now
+                    DateCreated = DateTime.UtcNow
                 };
 
-                // Save the BlogImage entry to the database
                 await _blogImageRepository.SaveImage(blogImage);
 
                 return Ok(new { filePath = fileUrl });
             }
-            return BadRequest(ModelState);
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.ToString());
+            }
         }
 
         private void ValidateFileMethod(IFormFile file)
         {
-            var allowedExtensions = new string[] { ".jpg", ".jpeg", ".png" };
-            if (!allowedExtensions.Contains(Path.GetExtension(file.FileName).ToLower()))
-            {
+            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png" };
+            var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+
+            if (!allowedExtensions.Contains(ext))
                 ModelState.AddModelError("file", "Unsupported file format.");
-            }
+
             if (file.Length > 10485760)
-            {
                 ModelState.AddModelError("file", "File size can't be more than 10MB.");
-            }
         }
     }
-
-
 }
-

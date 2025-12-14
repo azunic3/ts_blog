@@ -1,15 +1,14 @@
-﻿using BlogAppAPI.Data;
-using BlogAppAPI.Models.Domain;
-using BlogAppAPI.Models.DTO;
+﻿using BlogAppAPI.Models.DTO;
 using BlogAppAPI.Repositories;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
+using System.Security.Claims;
 
 namespace BlogAppAPI.Controllers
 {
     [ApiController]
-    [Route("/api/[controller]")]
+    [Route("api/[controller]")]
     public class BlogPostController : ControllerBase
     {
         private readonly IBlogRepository _blogPostRepository;
@@ -29,20 +28,18 @@ namespace BlogAppAPI.Controllers
             var result = new BlogPostGetResponseDto
             {
                 Page = page,
-                BlogPosts = blogPosts,
+                BlogPosts = blogPosts
             };
 
             if (blogPosts.Count < 6 || numberOfBlogPosts == page * 6)
-            {
                 result.Page = -1;
-            }
 
             return Ok(result);
         }
 
         [HttpGet]
         [SwaggerOperation("Get Blog Posts by Page")]
-        //[Authorize(Roles = "Admin")]
+        [Authorize] 
         public async Task<IActionResult> Get(int page = 1)
         {
             var blogPosts = await _blogPostRepository.Get(page);
@@ -51,87 +48,134 @@ namespace BlogAppAPI.Controllers
             var result = new BlogPostGetResponseDto
             {
                 Page = page,
-                BlogPosts = blogPosts,
+                BlogPosts = blogPosts
             };
 
             if (blogPosts.Count < 6 || numberOfBlogPosts == page * 6)
-            {
                 result.Page = -1;
-            }
 
             return Ok(result);
         }
 
         [HttpGet("{id:guid}")]
-        [Authorize(Roles = "Admin")]
+        [Authorize]
         [SwaggerOperation("Get Blog Post by Id")]
         public async Task<IActionResult> GetById(Guid id)
         {
             var blogPost = await _blogPostRepository.Get(id);
             if (blogPost == null)
-            {
                 return NotFound(new ErrorResponseDto("Blog post not found."));
-            }
-            
+
+            var isAdmin = User.IsInRole("Admin");
+            var username = User.Identity?.Name;
+
+            if (!isAdmin && blogPost.Author != username)
+                return Forbid();
+
             return Ok(blogPost);
         }
 
-        [HttpGet("{urlHandle}")]
+
+        [HttpGet("by-url/{urlHandle}")]
+        [AllowAnonymous]
         [SwaggerOperation("Get Blog Post by UrlHandle")]
         public async Task<IActionResult> GetByUrlHandle(string urlHandle)
         {
             var blogPost = await _blogPostRepository.GetByUrl(urlHandle);
             if (blogPost == null)
-            {
                 return NotFound(new ErrorResponseDto("Blog post not found."));
-            }
 
             return Ok(blogPost);
         }
 
         [HttpPost]
+        [Authorize]
         [SwaggerOperation("Create Blog Post")]
-        //[Authorize(Roles = "Admin")]
-        public async Task<IActionResult> Create(BlogPostCreateDto blogPost)
+        public async Task<IActionResult> Create([FromBody] BlogPostCreateDto blogPost)
         {
             if (blogPost == null)
-            {
                 return BadRequest(new ErrorResponseDto("Data is empty."));
-            }
+
+            var username = User.Identity?.Name;
+            if (string.IsNullOrWhiteSpace(username))
+                return Unauthorized(new ErrorResponseDto("Missing user identity."));
+
+            blogPost.Author = username;
 
             await _blogPostRepository.Create(blogPost);
 
-            var response = new BlogPostResponseDto
+            return StatusCode(201, new BlogPostResponseDto
             {
                 StatusCode = 201,
-                Message = "Created",
-            };
-
-            return StatusCode(201, response);
+                Message = "Created"
+            });
         }
 
-        [HttpPut("{id}")]
+        [HttpPut("{id:guid}")]
+        [Authorize]
         [SwaggerOperation("Update Blog Post by Id")]
-       // [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> Update(Guid id, BlogPostCreateDto blogPost)
+        public async Task<IActionResult> Update(Guid id, [FromBody] BlogPostCreateDto blogPost)
         {
+            var existing = await _blogPostRepository.Get(id);
+            if (existing == null)
+                return NotFound(new ErrorResponseDto("Blog post not found."));
+
+            var isAdmin = User.IsInRole("Admin");
+            var username = User.Identity?.Name;
+
+            if (!isAdmin && existing.Author != username)
+                return Forbid();
+
+            // nemoj dozvoliti da user “promijeni autora”
+            blogPost.Author = existing.Author;
+
             await _blogPostRepository.Update(id, blogPost);
             return NoContent();
         }
 
-        [HttpDelete("{id}")]
+        [HttpDelete("{id:guid}")]
+        [Authorize]
         [SwaggerOperation("Delete Blog Post by Id")]
-       // [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Delete(Guid id)
         {
-            var existingBlogPost = await _blogPostRepository.Get(id);
-            if (existingBlogPost == null)
-            {
+            var existing = await _blogPostRepository.Get(id);
+            if (existing == null)
                 return NotFound(new ErrorResponseDto("Blog post not found."));
-            }
+
+            var isAdmin = User.IsInRole("Admin");
+            var username = User.Identity?.Name;
+
+            if (!isAdmin && existing.Author != username)
+                return Forbid();
 
             await _blogPostRepository.Delete(id);
             return NoContent();
+        }
+
+        [HttpGet("mine")]
+        [Authorize]
+        [SwaggerOperation("Get My Blog Posts by Page")]
+        public async Task<IActionResult> GetMine(int page = 1)
+        {
+            var username = User.Identity?.Name;
+            if (string.IsNullOrWhiteSpace(username))
+                return Unauthorized(new ErrorResponseDto("Missing user identity."));
+
+            var isAdmin = User.IsInRole("Admin");
+
+            var blogPosts = await _blogPostRepository.GetMine(page, username, isAdmin);
+            var numberOfBlogPosts = await _blogPostRepository.CountMine(username, isAdmin);
+
+            var result = new BlogPostGetResponseDto
+            {
+                Page = page,
+                BlogPosts = blogPosts
+            };
+
+            if (blogPosts.Count < 6 || numberOfBlogPosts == page * 6)
+                result.Page = -1;
+
+            return Ok(result);
         }
     }
 }

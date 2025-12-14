@@ -1,21 +1,27 @@
-import { BlogPostCreate } from 'src/app/models/blogposts.model';
-import { BlogpostsService } from 'src/app/services/blogposts/blogposts.service';
-import { Observable, Subject, Subscription, takeUntil } from 'rxjs';
+import { ChangeDetectorRef, Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { Router } from '@angular/router';
-import { CategoriesService } from 'src/app/services/categories/categories.service';
+import { Observable, Subject, Subscription } from 'rxjs';
+
+import { BlogPostCreate } from 'src/app/models/blogposts.model';
 import { Category } from 'src/app/models/categories.model';
-import { AuthService } from 'src/app/services/auth/auth.service';
 import { BlogImagePost } from 'src/app/models/blog-image-post.model';
+
+import { BlogpostsService } from 'src/app/services/blogposts/blogposts.service';
+import { CategoriesService } from 'src/app/services/categories/categories.service';
 import { BlogImagesService } from 'src/app/services/blog-images/blog-images.service';
-import { ChangeDetectorRef, Component, ElementRef, OnInit, ViewChild } from '@angular/core';
+import { AuthService } from 'src/app/services/auth/auth.service';
+
+import { environment } from 'src/environments/environment.staging';
+
+declare const bootstrap: any;
 
 @Component({
   selector: 'app-add-blogpost',
   templateUrl: './add-blogpost.component.html',
   styleUrls: ['./add-blogpost.component.css'],
-  providers: [BlogpostsService, CategoriesService, AuthService],
 })
-export class AddBlogpostComponent implements OnInit {
+export class AddBlogpostComponent implements OnInit, OnDestroy {
+
   blogPost: BlogPostCreate = {
     title: '',
     shortDescription: '',
@@ -23,22 +29,26 @@ export class AddBlogpostComponent implements OnInit {
     featureImageUrl: '',
     urlHandle: '',
     publishDate: new Date(),
-    author: '',
+    author: '', // backend će ga setovati iz tokena
     isVisible: false,
     categories: [],
   };
+
   categories: Category[] = [];
-  private destroy$ = new Subject<void>();
-  availableCategories: any;
   blogImages$!: Observable<Array<BlogImagePost>>;
+
   selectedFile: File | null = null;
   fileName: string = '';
   title: string = '';
 
-  private subscription!: Subscription;
   private uploadSubscription?: Subscription;
+  private destroy$ = new Subject<void>();
 
   @ViewChild('imageModal') imageModal!: ElementRef;
+
+  // npr: https://localhost:7156/api  -> https://localhost:7156
+  apiBaseUrl = environment.apiUrl.replace('/api', '');
+
   constructor(
     private blogPostService: BlogpostsService,
     private categoriesService: CategoriesService,
@@ -51,15 +61,28 @@ export class AddBlogpostComponent implements OnInit {
   ngOnInit(): void {
     if (!this.authService.isLoggedIn()) {
       this.router.navigate(['/']);
+      return;
     }
 
-    this.getCategories();
+    this.loadCategories();
     this.blogImages$ = this.blogImageService.getBlogImages();
   }
 
-  getCategories(): void {
-    this.categoriesService.getCategories().subscribe((response: any) => {
-      this.categories = response;
+  ngOnDestroy(): void {
+    this.uploadSubscription?.unsubscribe();
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  private loadCategories(): void {
+    this.categoriesService.getCategories().subscribe({
+      next: (response: any) => {
+        this.categories = response;
+      },
+      error: (err) => {
+        console.error(err);
+        alert(err?.error?.message ?? 'Error loading categories');
+      }
     });
   }
 
@@ -72,102 +95,106 @@ export class AddBlogpostComponent implements OnInit {
     }
   }
 
-  updateSelectedCategories(event: Event, categoryName: string): void {
-    const checkbox = event.target as HTMLInputElement;
-    if (checkbox.checked) {
-      this.blogPost.categories.push(categoryName);
-    } else {
-      this.blogPost.categories = this.blogPost.categories.filter(cat => cat !== categoryName);
+  // ✅ ZA UI PREVIEW
+  getImageSrc(url?: string | null): string {
+    if (!url) return '';
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+
+    const path = url.startsWith('/') ? url : `/${url}`;
+    return `${this.apiBaseUrl}${path}`;
+  }
+
+  // ✅ ZA BACKEND (uvijek relativno: /images/...)
+  private toRelativeUrl(url?: string | null): string {
+    if (!url) return '';
+    if (url.startsWith('/')) return url;
+
+    try {
+      const u = new URL(url);
+      return u.pathname; // "/images/flower.jpg"
+    } catch {
+      return url.startsWith('images/') ? `/${url}` : url;
     }
   }
 
-  isCategorySelected(categoryId: string): boolean {
-    return this.blogPost.categories.includes(categoryId);
-  }
+  submitImageForm(): void {
+    if (!this.selectedFile || !this.fileName || !this.title) {
+      alert('File, name or title missing');
+      return;
+    }
 
-  SubmitImageForm(): void {
-    if (this.selectedFile && this.fileName && this.title) {
-      this.uploadSubscription = this.blogImageService.uploadImage(this.selectedFile, this.fileName, this.title)
-        .subscribe({
-          next: (response) => {
-            if (response && response.filePath) {
-              this.blogPost.featureImageUrl = response.filePath;
-              this.blogImages$ = this.blogImageService.getBlogImages();
-              
-              this.closeModal();
-            } else {
-              console.error('Upload response does not contain filePath:', response);
-            }
-          },
-          error: (error) => {
-            console.error('Error uploading image:', error);
-            window.alert('Use an image with an extension that is either .png, .jpg. or .jpeg!');
+    this.uploadSubscription = this.blogImageService
+      .uploadImage(this.selectedFile, this.fileName, this.title)
+      .subscribe({
+        next: (res: any) => {
+          const url = res?.filePath || res?.url;
+          if (!url) {
+            console.error('Invalid upload response', res);
+            alert('Upload response is missing url/filePath');
+            return;
           }
-        });
-    } else {
-      window.alert('File, file name, or title is missing.!')
-      console.error('File, file name, or title is missing.');
-    }
+
+          // čuvaj kako backend vrati (često full url)
+          this.blogPost.featureImageUrl = url;
+
+          this.selectedFile = null;
+          this.fileName = '';
+          this.title = '';
+
+          this.blogImages$ = this.blogImageService.getBlogImages();
+          this.closeModal();
+          this.cdr.detectChanges();
+        },
+        error: (err) => {
+          console.error(err);
+          alert(err?.error?.message ?? 'Upload failed (only .png, .jpg, .jpeg allowed)');
+        }
+      });
   }
 
   onFileSelected(event: any): void {
-    const file = event.target.files[0];
-    if (file) {
-      this.selectedFile = file;
-    }
+    const file = event?.target?.files?.[0];
+    if (file) this.selectedFile = file;
   }
 
-  onImageClick(url: string | undefined): void {
-    this.blogPost.featureImageUrl = url ?? '';
+  onImageClick(url?: string): void {
+    if (!url) return;
+    this.blogPost.featureImageUrl = url;
     this.closeModal();
   }
 
-createBlogPost(): void {
-  const d = new Date(this.blogPost.publishDate as any);
-  this.blogPost.publishDate = new Date(Date.UTC(
-    d.getFullYear(),
-    d.getMonth(),
-    d.getDate()
-  )) as any;
+  createBlogPost(): void {
+    const d = new Date(this.blogPost.publishDate as any);
+    this.blogPost.publishDate = new Date(Date.UTC(
+      d.getFullYear(),
+      d.getMonth(),
+      d.getDate()
+    )) as any;
 
-  this.blogPostService.createBlogPost(this.blogPost).subscribe({
-    next: (res) => {
-      if (res.status === 201 || res.status === 200) {
-        alert('Blog post created successfully');
-        this.router.navigate(['/admin/blogposts']);
-      } else {
-        alert('Created, but unexpected status: ' + res.status);
+    // ✅ backend neka dobije relativni path
+    this.blogPost.featureImageUrl = this.toRelativeUrl(this.blogPost.featureImageUrl);
+
+    // author ne šalji / ostavi prazno (backend ga već setuje)
+    this.blogPost.author = '';
+
+    this.blogPostService.createBlogPost(this.blogPost).subscribe({
+      next: () => {
+        this.router.navigate(['/blogposts']);
+      },
+      error: (err) => {
+        console.error(err);
+        alert(err?.error?.message ?? 'Error creating blog post');
       }
-    },
-    error: (err) => {
-      console.error(err);
-      alert(err?.error?.message ?? 'Error creating blog post');
-    }
-  });
-}
-
-
-
-  ngOnDestroy(): void {
-    this.destroy$.next();
-    this.destroy$.complete();
+    });
   }
 
   private closeModal(): void {
-    const modalElement = this.imageModal.nativeElement;
-    modalElement.classList.remove('show');
-    modalElement.setAttribute('aria-hidden', 'true');
-    modalElement.style.display = 'none';
-  
-    const backdrop = document.querySelector('.modal-backdrop');
-    if (backdrop) {
-      backdrop.remove();
-    }
-  const uploadButton = document.querySelector('button[data-bs-target="#imageModal"]')  as HTMLElement;;
-  if (uploadButton) {
-      uploadButton.blur(); 
-  }
-    document.body.classList.remove('modal-open');
-    document.documentElement.style.overflow= 'auto';
+    const el = this.imageModal?.nativeElement as HTMLElement;
+    if (!el) return;
+
+    (document.activeElement as HTMLElement | null)?.blur();
+
+    const instance = bootstrap.Modal.getOrCreateInstance(el);
+    instance.hide();
   }
 }

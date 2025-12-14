@@ -8,6 +8,9 @@ import { EditBlogPostRequest } from 'src/app/models/edit-blog-post-request.model
 import { BlogImagesService } from 'src/app/services/blog-images/blog-images.service';
 import { BlogpostsService } from 'src/app/services/blogposts/blogposts.service';
 import { CategoriesService } from 'src/app/services/categories/categories.service';
+import { environment } from 'src/environments/environment.staging';
+
+declare const bootstrap: any;
 
 @Component({
   selector: 'app-edit-blog-post',
@@ -24,6 +27,8 @@ export class EditBlogPostComponent implements OnInit, OnDestroy {
   paramsSubscription?: Subscription;
   updateBlogPostSubscription?: Subscription;
   private uploadSubscription?: Subscription;
+  private getBlogPostSubscription?: Subscription;
+  private getCategoriesSubscription?: Subscription;
 
   markdownContent: string = '';
   blogImages$!: Observable<Array<BlogImagePost>>;
@@ -31,9 +36,11 @@ export class EditBlogPostComponent implements OnInit, OnDestroy {
   selectedFile: File | null = null;
   fileName: string = '';
   title: string = '';
-declare  bootstrap: any;
 
   @ViewChild('imageModal') imageModal!: ElementRef;
+
+  // npr: https://localhost:7156/api  -> https://localhost:7156
+  apiBaseUrl = environment.apiUrl.replace('/api', '');
 
   constructor(
     private route: ActivatedRoute,
@@ -53,26 +60,67 @@ declare  bootstrap: any;
     });
   }
 
+  ngOnDestroy(): void {
+    this.paramsSubscription?.unsubscribe();
+    this.updateBlogPostSubscription?.unsubscribe();
+    this.uploadSubscription?.unsubscribe();
+    this.getBlogPostSubscription?.unsubscribe();
+    this.getCategoriesSubscription?.unsubscribe();
+  }
+
   private fetchBlogPost(id: string): void {
-    this.blogPostService.getBlogPost(id).subscribe(res => {
-      this.blogPost = res;
+    this.getBlogPostSubscription = this.blogPostService.getBlogPost(id).subscribe({
+      next: (res) => {
+        this.blogPost = res;
 
-      this.markdownContent = this.blogPost.content ?? '';
-
-      this.selectedCategories = (this.blogPost.categories ?? []).map((c: any) => c.id ?? c);
-
-      this.blogPost.featureImageUrl = this.toRelativeUrl(this.blogPost.featureImageUrl);
+        this.markdownContent = this.blogPost.content ?? '';
+        this.selectedCategories = (this.blogPost.categories ?? []).map((c: any) => c?.id ?? c);
+      },
+      error: (err) => {
+        console.error(err);
+        alert(err?.error?.message ?? 'Error loading blog post');
+      }
     });
   }
 
   private loadCategories(): void {
-    this.categoryService.getCategories().subscribe((response: any) => {
-      this.categories = response;
+    this.getCategoriesSubscription = this.categoryService.getCategories().subscribe({
+      next: (response: any) => {
+        this.categories = response;
+      },
+      error: (err) => {
+        console.error(err);
+        alert(err?.error?.message ?? 'Error loading categories');
+      }
     });
   }
 
   updateMarkdown(content: string): void {
     this.markdownContent = content;
+  }
+
+  // ✅ ZA UI: da preview uvijek radi (i kad je /images/... i kad je https://...)
+  getImageSrc(url?: string | null): string {
+    if (!url) return '';
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+
+    const path = url.startsWith('/') ? url : `/${url}`;
+    return `${this.apiBaseUrl}${path}`;
+  }
+
+  // ✅ ZA BACKEND: šalji uvijek relativno (/images/...)
+  private toRelativeUrl(url?: string | null): string {
+    if (!url) return '';
+    if (url.startsWith('/')) return url;
+
+    try {
+      // ako je full url, vrati samo path
+      const u = new URL(url);
+      return u.pathname; // npr "/images/flower.jpg"
+    } catch {
+      // fallback: tretiraj kao path
+      return url.startsWith('images/') ? `/${url}` : url;
+    }
   }
 
   onFormSubmit(): void {
@@ -86,20 +134,23 @@ declare  bootstrap: any;
       shortDescription: this.blogPost.shortDescription,
       content: this.blogPost.content,
 
+      // ✅ backend dobija RELATIVNO
       featureImageUrl: this.toRelativeUrl(this.blogPost.featureImageUrl),
 
       urlHandle: this.blogPost.urlHandle,
       publishDate: publishUtc as any,
-      author: this.blogPost.author,
-      isVisible: this.blogPost.isVisible,
 
+      // author nemoj mijenjati (backend ga ionako čuva)
+      author: this.blogPost.author,
+
+      isVisible: this.blogPost.isVisible,
       categories: this.selectedCategories
     };
 
     this.updateBlogPostSubscription = this.blogPostService
       .editBlogPost(this.id, request)
       .subscribe({
-        next: () => this.router.navigateByUrl('/admin/blogposts'),
+        next: () => this.router.navigateByUrl('blogposts'),
         error: (err) => {
           console.error(err);
           alert(err?.error?.message ?? 'Error updating blog post');
@@ -107,29 +158,36 @@ declare  bootstrap: any;
       });
   }
 
-  SubmitImageForm(): void {
+  submitImageForm(): void {
     if (!this.selectedFile || !this.fileName || !this.title) {
-      window.alert('File, file name, or title is missing.');
+      alert('File, name or title missing');
       return;
     }
 
     this.uploadSubscription = this.blogImageService
       .uploadImage(this.selectedFile, this.fileName, this.title)
       .subscribe({
-        next: (response: any) => {
-          const raw = response?.filePath ?? response?.url ?? '';
-          if (!raw) {
-            console.error('Upload response does not contain filePath/url:', response);
+        next: (res: any) => {
+          const url = res?.filePath || res?.url;
+          if (!url) {
+            console.error('Invalid upload response', res);
+            alert('Upload response is missing url/filePath');
             return;
           }
 
-          if (this.blogPost) this.blogPost.featureImageUrl = this.toRelativeUrl(raw);
+          // ✅ čuvaj kako backend vrati (najčešće full url)
+          if (this.blogPost) this.blogPost.featureImageUrl = url;
+
+          this.selectedFile = null;
+          this.fileName = '';
+          this.title = '';
+
           this.blogImages$ = this.blogImageService.getBlogImages();
           this.closeModal();
         },
-        error: (error) => {
-          console.error('Error uploading image:', error);
-          window.alert('Use .png, .jpg or .jpeg!');
+        error: (err) => {
+          console.error(err);
+          alert(err?.error?.message ?? 'Upload failed (only .png, .jpg, .jpeg allowed)');
         }
       });
   }
@@ -139,36 +197,19 @@ declare  bootstrap: any;
     if (file) this.selectedFile = file;
   }
 
-  onImageClick(url: string | undefined): void {
-    if (!this.blogPost) return;
-    this.blogPost.featureImageUrl = this.toRelativeUrl(url ?? '');
+  onImageClick(url?: string): void {
+    if (!url || !this.blogPost) return;
+    this.blogPost.featureImageUrl = url;
     this.closeModal();
   }
 
-  private toRelativeUrl(url: string): string {
-    if (!url) return '';
-    if (url.startsWith('/')) return url;
+  private closeModal(): void {
+    const el = this.imageModal?.nativeElement as HTMLElement;
+    if (!el) return;
 
-    try {
-      const u = new URL(url);
-      return u.pathname;
-    } catch {
-      return url;
-    }
-  }
+    (document.activeElement as HTMLElement | null)?.blur();
 
-private closeModal(): void {
-  const el = this.imageModal?.nativeElement as HTMLElement;
-  if (!el) return;
-
-  (document.activeElement as HTMLElement | null)?.blur();
-
-  const instance = this.bootstrap.Modal.getInstance(el) || new this.bootstrap.Modal(el);
-  instance.hide();
-}
-  ngOnDestroy(): void {
-    this.paramsSubscription?.unsubscribe();
-    this.updateBlogPostSubscription?.unsubscribe();
-    this.uploadSubscription?.unsubscribe();
+    const instance = bootstrap.Modal.getOrCreateInstance(el);
+    instance.hide();
   }
 }

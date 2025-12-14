@@ -27,18 +27,7 @@
   border: 1px solid rgba(109,148,197,.22);
 }
 
-.app-navbar .dropdown-menu{
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow);
-  padding: .35rem;
-}
 
-.app-navbar .dropdown-item{
-  border-radius: 10px;
-  padding: .55rem .75rem;
-}
-
-.app-navbar .dropdown-item:hover{
-  background: rgba(203,220,235,.55);
+.app-navbar .btn-outline-secondary{
+  border: 0;
 }
