@@ -22,7 +22,7 @@ namespace BlogAppAPI.Controllers
 		[HttpPost]
 		public async Task<IActionResult> AddComment([FromBody] AddCommentDto dto)
 		{
-			var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userId = User.FindFirstValue("id");
 			if (string.IsNullOrEmpty(userId))
 				return Unauthorized();
 

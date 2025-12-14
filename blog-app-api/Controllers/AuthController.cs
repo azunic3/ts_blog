@@ -146,7 +146,7 @@ namespace BlogAppAPI.Controllers
 		[HttpGet("profile")]
 		public async Task<IActionResult> GetProfile()
 		{
-			var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userId = User.FindFirstValue("id");
 
 			if (string.IsNullOrEmpty(userId))
 				return Unauthorized();
@@ -172,7 +172,7 @@ namespace BlogAppAPI.Controllers
 		[HttpPut("profile")]
 		public async Task<IActionResult> UpdateProfile([FromBody] UpdateUserProfileDto model)
 		{
-			var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userId = User.FindFirstValue("id");
 
 			if (string.IsNullOrEmpty(userId))
 				return Unauthorized();

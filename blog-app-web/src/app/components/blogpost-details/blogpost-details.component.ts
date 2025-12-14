@@ -43,6 +43,8 @@ export class BlogpostDetailsComponent implements OnInit {
       if (urlHandle) {
         this.getBlogPost(urlHandle);
       }
+      console.log(this.authService.getToken());
+
     });
 
     //Optionally auto-fill author if user is logged in
