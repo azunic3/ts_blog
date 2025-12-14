@@ -35,13 +35,10 @@ export class AuthService {
     return this.getCookie('jwtToken');
   }
 
-  register(username: string, email: string, password: string): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/Auth/Register`, {
-      username,
-      email,
-      password,
-    });
-  }
+register(data: any): Observable<any> {
+  return this.http.post(`${this.apiUrl}/Auth/Register`, data);
+}
+
 
   isAuthenticated(): boolean {
     const token = this.getToken();

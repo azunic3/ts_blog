@@ -3,11 +3,14 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { Observable, Subscription } from 'rxjs';
 import { BlogImagePost } from 'src/app/models/blog-image-post.model';
 import { BlogPost } from 'src/app/models/blogposts.model';
-import {  Category } from 'src/app/models/categories.model';
+import { Category } from 'src/app/models/categories.model';
 import { EditBlogPostRequest } from 'src/app/models/edit-blog-post-request.model';
 import { BlogImagesService } from 'src/app/services/blog-images/blog-images.service';
 import { BlogpostsService } from 'src/app/services/blogposts/blogposts.service';
 import { CategoriesService } from 'src/app/services/categories/categories.service';
+import { environment } from 'src/environments/environment.staging';
+
+declare const bootstrap: any;
 
 @Component({
   selector: 'app-edit-blog-post',
@@ -17,139 +20,196 @@ import { CategoriesService } from 'src/app/services/categories/categories.servic
 export class EditBlogPostComponent implements OnInit, OnDestroy {
   id: string = '';
   blogPost?: BlogPost;
-  categories: Category[] = []; 
-  selectedCategories: string[] = []; 
+
+  categories: Category[] = [];
+  selectedCategories: string[] = [];
+
   paramsSubscription?: Subscription;
   updateBlogPostSubscription?: Subscription;
   private uploadSubscription?: Subscription;
+  private getBlogPostSubscription?: Subscription;
+  private getCategoriesSubscription?: Subscription;
+
   markdownContent: string = '';
   blogImages$!: Observable<Array<BlogImagePost>>;
+
   selectedFile: File | null = null;
   fileName: string = '';
   title: string = '';
 
   @ViewChild('imageModal') imageModal!: ElementRef;
 
+  // npr: https://localhost:7156/api  -> https://localhost:7156
+  apiBaseUrl = environment.apiUrl.replace('/api', '');
+
   constructor(
     private route: ActivatedRoute,
     private blogPostService: BlogpostsService,
-    private categoryService: CategoriesService, 
+    private categoryService: CategoriesService,
     private blogImageService: BlogImagesService,
     private router: Router
   ) {}
 
   ngOnInit(): void {
+    this.blogImages$ = this.blogImageService.getBlogImages();
+    this.loadCategories();
+
     this.paramsSubscription = this.route.paramMap.subscribe(params => {
       this.id = params.get('id') ?? '';
-      this.fetchBlogPost(this.id);
-      this.loadCategories();
-      
+      if (this.id) this.fetchBlogPost(this.id);
     });
-    this.blogImages$ = this.blogImageService.getBlogImages();
-  }
-
-  private fetchBlogPost(id: string): void {
-    this.blogPostService.getBlogPost(id).subscribe(res => {
-      this.blogPost = res;
-      this.markdownContent = this.blogPost.content;
-      this.selectedCategories = this.blogPost.categories.map(cat => cat.id);
-    });
-  }
-
-  private loadCategories(): void {
-    this.categoryService.getCategories().subscribe((response: any) => {
-      this.categories = response;
-    });
-  }
-
-  onFormSubmit(): void {
-    if (this.blogPost) {
-      const request: EditBlogPostRequest = {
-        title: this.blogPost.title,
-        shortDescription: this.blogPost.shortDescription,
-        content: this.blogPost.content,
-        featureImageURL: this.blogPost.featureImageUrl,
-        urlHandle: this.blogPost.urlHandle,
-        publishDate: this.blogPost.publishDate,
-        author: this.blogPost.author,
-        isVisible: this.blogPost.isVisible,
-        categories: this.selectedCategories
-      };
-
-      this.updateBlogPostSubscription = this.blogPostService.editBlogPost(this.id, request).subscribe(() => {
-        this.router.navigateByUrl('/admin/blogposts');
-      });
-    }
   }
 
   ngOnDestroy(): void {
     this.paramsSubscription?.unsubscribe();
     this.updateBlogPostSubscription?.unsubscribe();
     this.uploadSubscription?.unsubscribe();
+    this.getBlogPostSubscription?.unsubscribe();
+    this.getCategoriesSubscription?.unsubscribe();
+  }
+
+  private fetchBlogPost(id: string): void {
+    this.getBlogPostSubscription = this.blogPostService.getBlogPost(id).subscribe({
+      next: (res) => {
+        this.blogPost = res;
+
+        this.markdownContent = this.blogPost.content ?? '';
+        this.selectedCategories = (this.blogPost.categories ?? []).map((c: any) => c?.id ?? c);
+      },
+      error: (err) => {
+        console.error(err);
+        alert(err?.error?.message ?? 'Error loading blog post');
+      }
+    });
+  }
+
+  private loadCategories(): void {
+    this.getCategoriesSubscription = this.categoryService.getCategories().subscribe({
+      next: (response: any) => {
+        this.categories = response;
+      },
+      error: (err) => {
+        console.error(err);
+        alert(err?.error?.message ?? 'Error loading categories');
+      }
+    });
   }
 
   updateMarkdown(content: string): void {
     this.markdownContent = content;
   }
 
-  SubmitImageForm(): void {
-    if (this.selectedFile && this.fileName && this.title) {
-      this.uploadSubscription = this.blogImageService.uploadImage(this.selectedFile, this.fileName, this.title)
-        .subscribe({
-          next: (response) => {
-            if (response && response.filePath) {
-              this.blogPost!.featureImageUrl = response.filePath;
-              this.blogImages$ = this.blogImageService.getBlogImages();
-              this.closeModal();
-            } else {
-              console.error('Upload response does not contain filePath:', response);
-            }
-          },
-          error: (error) => {
-            console.error('Error uploading image:', error);
-            window.alert('Use an image with an extension that is either .png, .jpg, or .jpeg!');
-          }
-        });
-    } else {
-      window.alert('File, file name, or title is missing.');
+  // ✅ ZA UI: da preview uvijek radi (i kad je /images/... i kad je https://...)
+  getImageSrc(url?: string | null): string {
+    if (!url) return '';
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+
+    const path = url.startsWith('/') ? url : `/${url}`;
+    return `${this.apiBaseUrl}${path}`;
+  }
+
+  // ✅ ZA BACKEND: šalji uvijek relativno (/images/...)
+  private toRelativeUrl(url?: string | null): string {
+    if (!url) return '';
+    if (url.startsWith('/')) return url;
+
+    try {
+      // ako je full url, vrati samo path
+      const u = new URL(url);
+      return u.pathname; // npr "/images/flower.jpg"
+    } catch {
+      // fallback: tretiraj kao path
+      return url.startsWith('images/') ? `/${url}` : url;
     }
+  }
+
+  onFormSubmit(): void {
+    if (!this.blogPost) return;
+
+    const d = new Date(this.blogPost.publishDate as any);
+    const publishUtc = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+
+    const request: EditBlogPostRequest = {
+      title: this.blogPost.title,
+      shortDescription: this.blogPost.shortDescription,
+      content: this.blogPost.content,
+
+      // ✅ backend dobija RELATIVNO
+      featureImageUrl: this.toRelativeUrl(this.blogPost.featureImageUrl),
+
+      urlHandle: this.blogPost.urlHandle,
+      publishDate: publishUtc as any,
+
+      // author nemoj mijenjati (backend ga ionako čuva)
+      author: this.blogPost.author,
+
+      isVisible: this.blogPost.isVisible,
+      categories: this.selectedCategories
+    };
+
+    this.updateBlogPostSubscription = this.blogPostService
+      .editBlogPost(this.id, request)
+      .subscribe({
+        next: () => this.router.navigateByUrl('blogposts'),
+        error: (err) => {
+          console.error(err);
+          alert(err?.error?.message ?? 'Error updating blog post');
+        }
+      });
+  }
+
+  submitImageForm(): void {
+    if (!this.selectedFile || !this.fileName || !this.title) {
+      alert('File, name or title missing');
+      return;
+    }
+
+    this.uploadSubscription = this.blogImageService
+      .uploadImage(this.selectedFile, this.fileName, this.title)
+      .subscribe({
+        next: (res: any) => {
+          const url = res?.filePath || res?.url;
+          if (!url) {
+            console.error('Invalid upload response', res);
+            alert('Upload response is missing url/filePath');
+            return;
+          }
+
+          // ✅ čuvaj kako backend vrati (najčešće full url)
+          if (this.blogPost) this.blogPost.featureImageUrl = url;
+
+          this.selectedFile = null;
+          this.fileName = '';
+          this.title = '';
+
+          this.blogImages$ = this.blogImageService.getBlogImages();
+          this.closeModal();
+        },
+        error: (err) => {
+          console.error(err);
+          alert(err?.error?.message ?? 'Upload failed (only .png, .jpg, .jpeg allowed)');
+        }
+      });
   }
 
   onFileSelected(event: any): void {
-    const file = event.target.files[0];
-    if (file) {
-      this.selectedFile = file;
-    }
+    const file = event?.target?.files?.[0];
+    if (file) this.selectedFile = file;
   }
 
-  onImageClick(url: string | undefined): void {
-    this.blogPost!.featureImageUrl = url ?? '';
+  onImageClick(url?: string): void {
+    if (!url || !this.blogPost) return;
+    this.blogPost.featureImageUrl = url;
     this.closeModal();
   }
 
   private closeModal(): void {
-    if (this.imageModal && this.imageModal.nativeElement) {
-      const modalElement = this.imageModal.nativeElement;
-      modalElement.classList.remove('show');
-      modalElement.setAttribute('aria-hidden', 'true');
-      modalElement.style.display = 'none';
+    const el = this.imageModal?.nativeElement as HTMLElement;
+    if (!el) return;
 
-      // Remove the backdrop element
-      const backdrop = document.querySelector('.modal-backdrop');
-      if (backdrop) {
-        backdrop.remove();
-      }
+    (document.activeElement as HTMLElement | null)?.blur();
 
-      // Ensure the button is re-enabled and not affected by focus issues
-      const uploadButton = document.querySelector('button[data-bs-target="#imageModal"]') as HTMLElement;
-      if (uploadButton) {
-        uploadButton.blur(); // Blurring to prevent requiring a double-click
-      }
-
-      // Remove the 'modal-open' class from the body to enable scrolling
-      document.body.classList.remove('modal-open');
-      document.documentElement.style.overflow = 'auto';
-    }
+    const instance = bootstrap.Modal.getOrCreateInstance(el);
+    instance.hide();
   }
 }
-

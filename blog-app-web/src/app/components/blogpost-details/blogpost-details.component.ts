@@ -43,6 +43,8 @@ export class BlogpostDetailsComponent implements OnInit {
       if (urlHandle) {
         this.getBlogPost(urlHandle);
       }
+      console.log(this.authService.getToken());
+
     });
 
     //Optionally auto-fill author if user is logged in
@@ -51,12 +53,27 @@ export class BlogpostDetailsComponent implements OnInit {
       //this.newComment.author = currentUser.name;
    // }
   }
+getImageSrc(url?: string | null): string {
+  if (!url) return '';
 
-  getBlogPost(urlHandle: string) {
-    this.blogPostService.getBlogPostByUrlHandle(urlHandle).subscribe((response: any) => {
-      this.blogPost = response;
-    });
-  }
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+
+  const normalized = url.startsWith('/') ? url : `/${url}`;
+
+  if (normalized.startsWith('/http')) return url;
+
+  return `${this.apiBaseUrl}${normalized}`;
+}
+
+
+
+getBlogPost(urlHandle: string) {
+  this.blogPostService.getBlogPostByUrlHandle(urlHandle).subscribe((response: any) => {
+    console.log('featureImageUrl from API:', response?.featureImageUrl);
+    this.blogPost = response;
+  });
+}
+
 
   addComment() {
     if (this.newComment.author.trim() && this.newComment.text.trim()) {
