@@ -16,7 +16,7 @@ export class AuthService {
 login(username: string, password: string): Observable<any> {
   return this.http
     .post<any>(
-      `${this.apiUrl}/Auth/Login`,
+      `${this.apiUrl}/auth/login`,
       { username, password },
       { withCredentials: true }
     )
@@ -31,7 +31,7 @@ login(username: string, password: string): Observable<any> {
 
   logout(): Observable<any> {
     this.deleteCookie('jwtToken');
-    return this.http.post(`${this.apiUrl}/Auth/Logout`, {}, { withCredentials: true });
+    return this.http.post(`${this.apiUrl}/auth/logout`, {}, { withCredentials: true });
   }
   
   
@@ -42,7 +42,7 @@ login(username: string, password: string): Observable<any> {
 
 register(data: any): Observable<any> {
   return this.http.post(
-    `${this.apiUrl}/Auth/Register`,
+    `${this.apiUrl}/auth/register`,
     data,
     { withCredentials: true }
   );
@@ -89,7 +89,7 @@ register(data: any): Observable<any> {
 
     const expirationDate = new Date(exp);
     document.cookie =
-      `jwtToken=${token}; expires=${expirationDate.toUTCString()}; path=/; SameSite=Strict; Secure`;
+      `jwtToken=${token}; expires=${expirationDate.toUTCString()}; path=/; SameSite=None; Secure`;
   }
 
   private getCookie(name: string): string | null {
@@ -103,12 +103,12 @@ register(data: any): Observable<any> {
   //     `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
   // }
   private deleteCookie(name: string) {
-  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Strict; Secure`;
+  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=None; Secure`;
 }
 
 
   refresh(): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/Auth/Refresh`, {}, { withCredentials: true });
+    return this.http.post<any>(`${this.apiUrl}/auth/refresh`, {}, { withCredentials: true });
   }
 
   saveAccessToken(token: string) {
@@ -116,7 +116,7 @@ register(data: any): Observable<any> {
     const exp = decoded.exp * 1000;
     const expires = new Date(exp).toUTCString();
   
-    document.cookie = `jwtToken=${token}; expires=${expires}; path=/; SameSite=Strict; Secure`;
+    document.cookie = `jwtToken=${token}; expires=${expires}; path=/; SameSite=None; Secure`;
   }
   
 }
