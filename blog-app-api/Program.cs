@@ -12,9 +12,6 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// --------------------------------------------------
-// 1️⃣ Default ASP.NET konfiguracija
-// --------------------------------------------------
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
@@ -48,22 +45,12 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// --------------------------------------------------
-// 2️⃣ Database konekcija
-// --------------------------------------------------
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// --------------------------------------------------
-// 3️⃣ Identity
-// --------------------------------------------------
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
-
-// --------------------------------------------------
-// 4️⃣ Repozitoriji
-// --------------------------------------------------
 builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
 builder.Services.AddScoped<IBlogRepository, BlogRepository>();
 builder.Services.AddScoped<IAuthRepository, AuthRepository>();
@@ -71,9 +58,6 @@ builder.Services.AddScoped<IBlogImageRepository, BlogImageRepository>();
 builder.Services.AddScoped<ICommentRepository, CommentRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 
-// --------------------------------------------------
-// 5️⃣ JWT autentikacija
-// --------------------------------------------------
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -96,27 +80,21 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
-// --------------------------------------------------
-// 6️⃣ CORS (Frontend + lokalni dev)
-// --------------------------------------------------
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
         policy
             .WithOrigins(
-                "https://localhost:4200",
+               // "https://localhost:4200",
                 "https://main.d1ahgoahd4te6v.amplifyapp.com"
             )
             .AllowAnyHeader()
-            .AllowAnyMethod()
-            .AllowCredentials();
+            .AllowAnyMethod();
+           // .AllowCredentials();
     });
 });
 
-// --------------------------------------------------
-// 7️⃣ Forwarded headers (NGINX + HTTPS)
-// --------------------------------------------------
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders =
@@ -124,14 +102,8 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
         ForwardedHeaders.XForwardedProto;
 });
 
-// --------------------------------------------------
-// 8️⃣ Build aplikacije
-// --------------------------------------------------
 var app = builder.Build();
 
-// --------------------------------------------------
-// 9️⃣ Seed (role + admin)
-// --------------------------------------------------
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
@@ -177,12 +149,15 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-// --------------------------------------------------
-// 🔟 Middleware pipeline (REDOSLIJED JE BITAN)
-// --------------------------------------------------
+app.UseForwardedHeaders();
+app.Use((context, next) =>
+{
+    context.Request.Scheme = "https";
+    return next();
+});
+
 app.UseCors("AllowFrontend");
 
-app.UseForwardedHeaders();
 
 if (app.Environment.IsDevelopment())
 {

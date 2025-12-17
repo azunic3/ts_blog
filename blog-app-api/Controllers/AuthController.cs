@@ -43,13 +43,14 @@ namespace BlogAppAPI.Controllers
 			var (accessToken, refreshToken) =
 				await _authRepository.GenerateTokensAsync(foundUser);
 
-			_context.RefreshTokens.Add(refreshToken);
-			await _context.SaveChangesAsync();
-
-			SetRefreshTokenCookie(refreshToken);
+			// ⛔ Refresh token se više NE koristi (cookie-based auth isključen)
+			// _context.RefreshTokens.Add(refreshToken);
+			// await _context.SaveChangesAsync();
+			// SetRefreshTokenCookie(refreshToken);
 
 			return Ok(new { token = accessToken });
 		}
+
 
 		[AllowAnonymous]
 		[HttpPost("Register")]
@@ -77,76 +78,41 @@ namespace BlogAppAPI.Controllers
 			var (accessToken, refreshToken) =
 				await _authRepository.GenerateTokensAsync(newUser);
 
-			_context.RefreshTokens.Add(refreshToken);
-			await _context.SaveChangesAsync();
-
-			SetRefreshTokenCookie(refreshToken);
+			// ⛔ Refresh token + cookies ISKLJUČENO
+			// _context.RefreshTokens.Add(refreshToken);
+			// await _context.SaveChangesAsync();
+			// SetRefreshTokenCookie(refreshToken);
 
 			return Ok(new { token = accessToken });
 		}
 
+	
+		/*
 		[AllowAnonymous]
 		[HttpPost("Refresh")]
 		public async Task<IActionResult> Refresh()
 		{
-			var refreshToken = Request.Cookies["refreshToken"];
-
-			if (refreshToken == null)
-				return Unauthorized("Missing refresh token");
-
-			var storedToken = await _context.RefreshTokens
-				.FirstOrDefaultAsync(x => x.Token == refreshToken);
-
-			if (storedToken == null || !storedToken.IsActive)
-				return Unauthorized("Invalid refresh token");
-
-			var user = await _userManager.Users
-				.FirstOrDefaultAsync(u => u.Id == storedToken.UserId);
-
-			if (user == null)
-				return Unauthorized();
-
-			storedToken.Revoked = DateTime.UtcNow;
-
-			var (newAccessToken, newRefreshToken) =
-				await _authRepository.GenerateTokensAsync(user);
-
-			_context.RefreshTokens.Add(newRefreshToken);
-			await _context.SaveChangesAsync();
-
-			SetRefreshTokenCookie(newRefreshToken);
-
-			return Ok(new { token = newAccessToken });
+			// Cookie-based refresh token flow je isključen
+			return Unauthorized("Refresh token flow is disabled.");
 		}
+		*/
 
+	
 		[Authorize]
 		[HttpPost("Logout")]
-		public async Task<IActionResult> Logout()
+		public IActionResult Logout()
 		{
-			var refreshToken = Request.Cookies["refreshToken"];
-
-			if (refreshToken != null)
-			{
-				var storedToken = await _context.RefreshTokens
-					.FirstOrDefaultAsync(x => x.Token == refreshToken);
-
-				if (storedToken != null)
-				{
-					storedToken.Revoked = DateTime.UtcNow;
-					await _context.SaveChangesAsync();
-				}
-
-				Response.Cookies.Delete("refreshToken");
-			}
-
+			// ⛔ Logout je sada frontend odgovornost
+			// (brisanje JWT-a iz localStorage / memory)
 			return Ok("Logged out.");
 		}
 
+	
 		[Authorize]
 		[HttpGet("profile")]
 		public async Task<IActionResult> GetProfile()
 		{
-            var userId = User.FindFirstValue("id");
+			var userId = User.FindFirstValue("id");
 
 			if (string.IsNullOrEmpty(userId))
 				return Unauthorized();
@@ -172,7 +138,7 @@ namespace BlogAppAPI.Controllers
 		[HttpPut("profile")]
 		public async Task<IActionResult> UpdateProfile([FromBody] UpdateUserProfileDto model)
 		{
-            var userId = User.FindFirstValue("id");
+			var userId = User.FindFirstValue("id");
 
 			if (string.IsNullOrEmpty(userId))
 				return Unauthorized();
@@ -191,17 +157,20 @@ namespace BlogAppAPI.Controllers
 			return Ok(new { message = "Profile updated successfully" });
 		}
 
-
+		// =========================
+		// COOKIE METODA (ISKLUČENA)
+		// =========================
+		/*
 		private void SetRefreshTokenCookie(RefreshToken token)
-        {
-            Response.Cookies.Append("refreshToken", token.Token, new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = true,
-                SameSite = SameSiteMode.None, //none is must for amplify
-                Expires = token.Expires
-            });
-        }
-
+		{
+			Response.Cookies.Append("refreshToken", token.Token, new CookieOptions
+			{
+				HttpOnly = true,
+				Secure = true,
+				SameSite = SameSiteMode.None,
+				Expires = token.Expires
+			});
+		}
+		*/
 	}
 }

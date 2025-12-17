@@ -12,23 +12,31 @@ namespace BlogAppAPI.Repositories
 {
     public class AuthRepository : IAuthRepository
     {
-
-        private readonly UserManager<ApplicationUser> _userManager; // Provided function by ASP.NET for user management operations.
-        private readonly IConfiguration _configuration; // For appsettings.json access.
-        private readonly SignInManager<ApplicationUser> _signInManager; // For sign in management operations.
+        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IConfiguration _configuration;
+        private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly ApplicationDbContext _appDbContext;
 
-        public AuthRepository(UserManager<ApplicationUser> userManager, IConfiguration configuration, SignInManager<ApplicationUser> signInManager, ApplicationDbContext appDbContext)
+        public AuthRepository(
+            UserManager<ApplicationUser> userManager,
+            IConfiguration configuration,
+            SignInManager<ApplicationUser> signInManager,
+            ApplicationDbContext appDbContext)
         {
             _userManager = userManager;
             _configuration = configuration;
             _signInManager = signInManager;
-            _appDbContext=appDbContext;
+            _appDbContext = appDbContext;
         }
 
         public async Task<ApplicationUser> LoginAsync(string username, string password)
         {
-            var result = await _signInManager.PasswordSignInAsync(username, password, false, lockoutOnFailure: true);
+            var result = await _signInManager.PasswordSignInAsync(
+                username,
+                password,
+                false,
+                lockoutOnFailure: true
+            );
 
             if (result.Succeeded)
             {
@@ -38,52 +46,59 @@ namespace BlogAppAPI.Repositories
             return null;
         }
 
-        // Method that generates a JWT token.
-public async Task<(string accessToken, RefreshToken refreshToken)> GenerateTokensAsync(ApplicationUser user)
-{
-    var claims = new List<Claim>
-    {
-        new Claim(JwtRegisteredClaimNames.Sub, user.UserName),
-        new Claim(ClaimTypes.Name, user.UserName), 
-        new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-        new Claim("id", user.Id)
-    };
+        // =========================
+        // JWT ACCESS TOKEN (BEZ COOKIES)
+        // =========================
+        public async Task<(string accessToken, RefreshToken refreshToken)> GenerateTokensAsync(ApplicationUser user)
+        {
+            var claims = new List<Claim>
+            {
+                new Claim(JwtRegisteredClaimNames.Sub, user.UserName),
+                new Claim(ClaimTypes.Name, user.UserName),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                new Claim("id", user.Id)
+            };
 
-    var roles = await _userManager.GetRolesAsync(user);
-    foreach (var role in roles)
-    {
-        claims.Add(new Claim(ClaimTypes.Role, role));
-    }
+            var roles = await _userManager.GetRolesAsync(user);
+            foreach (var role in roles)
+            {
+                claims.Add(new Claim(ClaimTypes.Role, role));
+            }
 
-    var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]));
-    var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+            var key = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(_configuration["Jwt:Key"])
+            );
 
-    var jwtToken = new JwtSecurityToken(
-        issuer: _configuration["Jwt:Issuer"],
-        audience: _configuration["Jwt:Audience"],
-        claims: claims,
-        expires: DateTime.UtcNow.AddMinutes(60),
-        signingCredentials: credentials
-    );
+            var credentials = new SigningCredentials(
+                key,
+                SecurityAlgorithms.HmacSha256
+            );
 
-    string accessToken = new JwtSecurityTokenHandler().WriteToken(jwtToken);
+            var jwtToken = new JwtSecurityToken(
+                issuer: _configuration["Jwt:Issuer"],
+                audience: _configuration["Jwt:Audience"],
+                claims: claims,
+                expires: DateTime.UtcNow.AddMinutes(60),
+                signingCredentials: credentials
+            );
 
-    var refreshToken = new RefreshToken
-    {
-        Token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64)),
-        UserId = user.Id,
-        Created = DateTime.UtcNow,
-        Expires = DateTime.UtcNow.AddDays(7)
-    };
+            string accessToken =
+                new JwtSecurityTokenHandler().WriteToken(jwtToken);
 
-    return (accessToken, refreshToken);
-}
+            // ⛔ Refresh token više NE KORISTIMO (cookie-based auth isključen)
+            // var refreshToken = new RefreshToken
+            // {
+            //     Token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64)),
+            //     UserId = user.Id,
+            //     Created = DateTime.UtcNow,
+            //     Expires = DateTime.UtcNow.AddDays(7)
+            // };
 
+            return (accessToken, null);
+        }
 
-        // Method that registers and stores a new user into the database with the provided 'IdentityUser' object and password.
         public async Task<IdentityResult> RegisterAsync(ApplicationUser user, string password)
         {
-            
             var createUser = await _userManager.CreateAsync(user, password);
 
             if (!createUser.Succeeded)
@@ -101,7 +116,8 @@ public async Task<(string accessToken, RefreshToken refreshToken)> GenerateToken
             return createUser;
         }
 
-        //generate Refresh Token
+        // ⛔ NE KORISTI SE – refresh token flow isključen
+        /*
         private RefreshToken GenerateRefreshToken(string userId)
         {
             return new RefreshToken
@@ -112,10 +128,12 @@ public async Task<(string accessToken, RefreshToken refreshToken)> GenerateToken
                 Created = DateTime.UtcNow
             };
         }
+        */
 
         public async Task<ApplicationUser> GetUserById(string id)
         {
-            return await _appDbContext.Users.FirstOrDefaultAsync(u => u.Id == id);
+            return await _appDbContext.Users
+                .FirstOrDefaultAsync(u => u.Id == id);
         }
 
         public async Task<ApplicationUser> UpdateUser(ApplicationUser user)
@@ -124,6 +142,5 @@ public async Task<(string accessToken, RefreshToken refreshToken)> GenerateToken
             await _appDbContext.SaveChangesAsync();
             return user;
         }
-
     }
 }

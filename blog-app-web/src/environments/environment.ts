@@ -4,5 +4,7 @@
 // };
 export const environment = {
   production: true,
-  apiUrl: 'https://3.237.44.239/api'
+  apiUrl: 'https://3.235.183.130.nip.io/api'
 };
+
+
