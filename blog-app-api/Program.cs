@@ -90,17 +90,14 @@ builder.Services.AddCors(options =>
 	options.AddPolicy("AllowFrontend", policy =>
 	{
 		policy
-		.WithOrigins(
-		// Amplify domain:
-		"[https://main.d1ahgoahd4te6v.amplifyapp.com](https://main.d1ahgoahd4te6v.amplifyapp.com)",
-
-			// lokalni dev (Angular/React) - koristi http za local:
-					"http://localhost:4200",
-					"http://localhost:3000"
-				)
-				.AllowAnyHeader()
-				.AllowAnyMethod();
-		// ❌ Nema AllowCredentials (ne treba za JWT Bearer)
+			.WithOrigins(
+				"https://main.d1cs4sdtdtvkzb.amplifyapp.com",
+				"http://localhost:4200",
+				"http://localhost:3000"
+			)
+			.AllowAnyHeader()
+			.AllowAnyMethod();
+		// JWT u Authorization headeru → AllowCredentials NE treba
 	});
 });
 
